@@ -1,0 +1,12 @@
+.main-menu {
+    -fx-background-color: #111827;
+}
+
+.title {
+    -fx-font-size: 36px;
+    -fx-text-fill: white;
+}
+
+.game-room {
+    -fx-background-color: #f3f4f6;
+}
