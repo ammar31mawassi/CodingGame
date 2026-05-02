@@ -1,74 +1,51 @@
 package com.codeescape.validation;
 
-import javax.swing.*;
-import java.util.LinkedList;
+import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VariableDeclarationValidatorTest {
-    private LinkedList<String> variables = new LinkedList<>();
-    public VariableDeclarationValidatorTest() {}
-    public boolean validate(String line){
-        String[] words = line.split(" ");
-        if(words.length != 4)
-            return false;
-        if(!words[2].equals("=")){
-            return false;
-        }
-        switch(words[0]){
-            case "int":
-                if(!validVarName(words[1])){ return false; }
-                if(!validateInteger(words[3])){ return false; }
-                variables.add(words[1]);
-                return true;
-            case "double":
-                return validateDouble(words[3]);
-            case "char":
-                return validateChar(words[3]);
-            case "String":
-                return validateString(words[3]);
-            case "boolean":
-                return validateBoolean(words[3]);
-            default:
-                return false;
-        }
-    }
-    private boolean validVarName(String name){
-        String[] invalidWords = new String[]{"int", "double", "char", "String", "boolean","while"
-                ,"if","for","class","1","2","3","4","5","6","7","8","9","0"};
-        for(String invalidWord : invalidWords){
-            if(name.equals(invalidWord)){
-                return  false;
-            }
-        }
-        for(String varName : variables){
-            if(name.equals(varName)){
-                return  false;
-            }
-        }
-        return true;
+    private final VariableDeclarationValidator validator = new VariableDeclarationValidator();
 
+    @Test
+    void acceptsValidVariableDeclarations() {
+        assertTrue(validator.validate("int x = 5;").isValid());
+        assertTrue(validator.validate("double price = 4.5;").isValid());
+        assertTrue(validator.validate("String name = \"Ammar\";").isValid());
+        assertTrue(validator.validate("char grade = 'A';").isValid());
+        assertTrue(validator.validate("boolean active = true;").isValid());
     }
-    private boolean validateInteger(String value){
-        char[] chars = value.toCharArray();
-        if(value.toCharArray()[value.length()-1] != ';'){
-            return false;
-        }
-        for(Character c : value.toCharArray()){
-            if(!Character.isDigit(c)){
-                return false;
-            }
-        }
-        return true;
+
+    @Test
+    void acceptsValidNamesWithUnderscoresDollarSignsAndNumbersAfterFirstCharacter() {
+        assertTrue(validator.validate("int score_1 = 10;").isValid());
+        assertTrue(validator.validate("double $price = 12.99;").isValid());
+        assertTrue(validator.validate("boolean isActive2 = false;").isValid());
     }
-    private boolean validateDouble(String value){
-        return false;
+
+    @Test
+    void rejectsInvalidVariableNames() {
+        assertFalse(validator.validate("int 5 = x;").isValid());
+        assertFalse(validator.validate("int 5score = 10;").isValid());
+        assertFalse(validator.validate("String first-name = \"Ammar\";").isValid());
     }
-    private boolean validateChar(String value){
-        return false;
+
+    @Test
+    void rejectsValuesThatDoNotMatchDeclaredType() {
+        assertFalse(validator.validate("String name = 7;").isValid());
+        assertFalse(validator.validate("char c = \"A\";").isValid());
+        assertFalse(validator.validate("boolean active = 10;").isValid());
+        assertFalse(validator.validate("double price = \"hello\";").isValid());
+        assertFalse(validator.validate("int count = 4.5;").isValid());
     }
-    private boolean validateString(String value){
-        return false;
-    }
-    private boolean validateBoolean(String value){
-        return false;
+
+    @Test
+    void rejectsMalformedDeclarations() {
+        assertFalse(validator.validate("").isValid());
+        assertFalse(validator.validate("int x = 5").isValid());
+        assertFalse(validator.validate("x int = 5;").isValid());
+        assertFalse(validator.validate("int = 5;").isValid());
+        assertFalse(validator.validate("int x 5;").isValid());
     }
 }

@@ -24,4 +24,9 @@ public class ValidationResult {
     public static ValidationResult failure(String message) {
         return new ValidationResult(false, message);
     }
+
+    @Override
+    public String toString() {
+        return message;
+    }
 }
