@@ -1,5 +1,6 @@
 package com.codeescape.validation;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -7,6 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IfStatementValidatorTest {
     private final IfStatementValidator validator = new IfStatementValidator();
+
+    @BeforeEach
+    void resetVariables() {
+        VariableDeclarationValidator.getInstance();
+        VariableDeclarationValidator.resetVariables();
+    }
 
     @Test
     void acceptsValidComparisonConditions() {

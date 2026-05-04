@@ -1,5 +1,6 @@
 package com.codeescape.validation;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -7,6 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VariableDeclarationValidatorTest {
     private final VariableDeclarationValidator validator = VariableDeclarationValidator.getInstance();
+
+    @BeforeEach
+    void resetVariables() {
+        VariableDeclarationValidator.resetVariables();
+    }
 
     @Test
     void acceptsValidVariableDeclarations() {

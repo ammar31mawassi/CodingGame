@@ -25,6 +25,8 @@ public class GameApp extends Application {
         levelManager = new LevelManager();
         levelManager.loadLevels();
         showMainMenu();
+        primaryStage.setMaximized(true);
+        primaryStage.setFullScreen(true);
         primaryStage.show();
     }
 
@@ -66,6 +68,9 @@ public class GameApp extends Application {
     }
 
     private void setScene(Parent root) {
-        primaryStage.setScene(new Scene(root, Constants.WINDOW_WIDTH, Constants.WINDOW_HEIGHT));
+        Scene scene = new Scene(root, Constants.WINDOW_WIDTH, Constants.WINDOW_HEIGHT);
+        String stylesheet = getClass().getResource("/styles/style.css").toExternalForm();
+        scene.getStylesheets().add(stylesheet);
+        primaryStage.setScene(scene);
     }
 }

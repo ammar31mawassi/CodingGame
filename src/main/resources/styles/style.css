@@ -1,5 +1,5 @@
 .main-menu {
-    -fx-background-color: #111827;
+    -fx-background-color: #171821;
 }
 
 .title {
@@ -7,6 +7,155 @@
     -fx-text-fill: white;
 }
 
+.game-screen {
+    -fx-background-color: #171821;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+}
+
+.game-left-column {
+    -fx-min-width: 850px;
+    -fx-max-width: 850px;
+}
+
+.game-title {
+    -fx-font-size: 30px;
+    -fx-text-fill: #d9d9d7;
+    -fx-font-weight: bold;
+}
+
 .game-room {
-    -fx-background-color: #f3f4f6;
+    -fx-background-color: #5e6478;
+}
+
+.room-floor {
+    -fx-fill: #5e6478;
+}
+
+.room-inner-floor {
+    -fx-fill: #282b36;
+}
+
+.room-token {
+    -fx-background-color: #f1ce54;
+    -fx-border-color: #c4932f;
+    -fx-border-width: 0 0 4 4;
+}
+
+.room-token-text {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #33323a;
+}
+
+.player-head,
+.player-leg {
+    -fx-fill: #58b7f0;
+}
+
+.player-body {
+    -fx-fill: #2b74a8;
+}
+
+.door-locked {
+    -fx-fill: #87543a;
+}
+
+.door-open {
+    -fx-fill: #43d868;
+}
+
+.terminal-tile {
+    -fx-background-color: #44db72;
+    -fx-border-color: #1d8e47;
+    -fx-border-width: 0 0 7 7;
+    -fx-cursor: hand;
+}
+
+.terminal-text {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #294135;
+}
+
+.goal-panel {
+    -fx-background-color: #171821;
+    -fx-border-color: transparent;
+}
+
+.goal-panel .label {
+    -fx-font-size: 18px;
+    -fx-text-fill: #d9d9d7;
+    -fx-font-weight: bold;
+    -fx-wrap-text: true;
+}
+
+.goal-panel .panel-heading {
+    -fx-font-size: 22px;
+    -fx-text-fill: #f1f1ec;
+}
+
+.inventory-panel {
+    -fx-background-color: #11131c;
+    -fx-padding: 14;
+    -fx-min-height: 95px;
+}
+
+.inventory-title {
+    -fx-font-size: 22px;
+    -fx-text-fill: #b9bdc9;
+    -fx-font-weight: bold;
+}
+
+.inventory-token {
+    -fx-background-color: #f1ce54;
+    -fx-text-fill: #292a33;
+    -fx-padding: 3 8 4 8;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.pixel-button,
+.token-button {
+    -fx-background-color: #f1ce54;
+    -fx-text-fill: #282b36;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 0;
+    -fx-border-color: #c4932f;
+    -fx-border-width: 0 0 5 5;
+    -fx-cursor: hand;
+}
+
+.pixel-button:disabled,
+.token-button:disabled {
+    -fx-opacity: 0.4;
+}
+
+.puzzle-overlay-shell {
+    -fx-background-color: rgba(17, 19, 28, 0.96);
+    -fx-border-color: #5e6478;
+    -fx-border-width: 8;
+}
+
+.puzzle-overlay {
+    -fx-background-color: transparent;
+}
+
+.puzzle-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f1f1ec;
+}
+
+.puzzle-copy,
+.feedback-label,
+.answer-preview {
+    -fx-font-size: 15px;
+    -fx-text-fill: #d9d9d7;
+}
+
+.answer-preview {
+    -fx-background-color: #282b36;
+    -fx-padding: 8;
 }

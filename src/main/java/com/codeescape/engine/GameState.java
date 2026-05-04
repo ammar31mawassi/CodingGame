@@ -4,6 +4,7 @@ import com.codeescape.model.Inventory;
 import com.codeescape.model.Level;
 import com.codeescape.model.Player;
 import com.codeescape.util.Constants;
+import com.codeescape.validation.VariableDeclarationValidator;
 
 public class GameState {
     private Player player;
@@ -36,6 +37,8 @@ public class GameState {
         currentLevel = level;
         player = createDefaultPlayer();
         inventory = new Inventory();
+        VariableDeclarationValidator.getInstance();
+        VariableDeclarationValidator.resetVariables();
     }
 
     public boolean isGameFinished() {
@@ -50,8 +53,8 @@ public class GameState {
         return new Player(
                 Constants.PLAYER_START_X,
                 Constants.PLAYER_START_Y,
-                Constants.PLAYER_SIZE,
-                Constants.PLAYER_SIZE,
+                Constants.PLAYER_WIDTH,
+                Constants.PLAYER_HEIGHT,
                 Constants.PLAYER_SPEED
         );
     }

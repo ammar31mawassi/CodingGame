@@ -3,19 +3,23 @@ package com.codeescape.ui;
 import com.codeescape.model.Inventory;
 import javafx.scene.Parent;
 import javafx.scene.control.Label;
-import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.VBox;
 
 public class InventoryView {
     private Inventory inventory;
-    private final HBox tokenBox = new HBox(8);
+    private final FlowPane tokenBox = new FlowPane(8, 8);
 
     public InventoryView(Inventory inventory) {
         this.inventory = inventory;
     }
 
     public Parent createView() {
-        VBox root = new VBox(8, new Label("Inventory"), tokenBox);
+        Label title = new Label("Inventory:");
+        title.getStyleClass().add("inventory-title");
+
+        VBox root = new VBox(8, title, tokenBox);
+        root.getStyleClass().add("inventory-panel");
         refresh();
         return root;
     }
@@ -23,7 +27,11 @@ public class InventoryView {
     public void refresh() {
         tokenBox.getChildren().setAll(
                 inventory.getTokens().stream()
-                        .map(token -> new Label(token.getValue()))
+                        .map(token -> {
+                            Label label = new Label(token.getValue());
+                            label.getStyleClass().add("inventory-token");
+                            return label;
+                        })
                         .toList()
         );
     }

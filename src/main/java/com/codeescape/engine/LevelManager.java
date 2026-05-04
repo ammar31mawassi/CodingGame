@@ -5,8 +5,10 @@ import com.codeescape.model.Level;
 import com.codeescape.model.Puzzle;
 import com.codeescape.model.Room;
 import com.codeescape.model.Token;
+import com.codeescape.util.Constants;
 import com.codeescape.validation.ClassDeclarationValidator;
 import com.codeescape.validation.IfStatementValidator;
+import com.codeescape.validation.StringDeclarationValidator;
 import com.codeescape.validation.VariableDeclarationValidator;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +21,7 @@ public class LevelManager {
         levels.clear();
         currentLevelIndex = 0;
         levels.add(createVariableLevel());
+        levels.add(createStringDeclarationLevel());
         levels.add(createIfStatementLevel());
         levels.add(createClassLevel());
     }
@@ -54,14 +57,33 @@ public class LevelManager {
         );
 
         Room room = new Room(
-                800,
-                600,
-                tokens("int", "String", "char", "boolean", "x", "name", "grade", "active", "=", "5", "\"Ammar\"", "'A'", "true", ";", "banana", "house", "if"),
-                new Door(730, 250, 40, 100),
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
+                tokens("int", "x", "=", "5", ";"),
+                createExitDoor(),
                 puzzle
         );
 
         return new Level(1, "Variable Vault", "Variable declarations", room);
+    }
+
+    private Level createStringDeclarationLevel() {
+        Puzzle puzzle = new Puzzle(
+                "String Declaration",
+                "Build a valid String declaration statement.",
+                List.of("String variables", "literal values"),
+                new StringDeclarationValidator("\"Ammar\"")
+        );
+
+        Room room = new Room(
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
+                tokens("int", "String", "char", "age", "name", "grade", "=", "5", "\"Ammar\"", "'A'", ";"),
+                createExitDoor(),
+                puzzle
+        );
+
+        return new Level(2, "String Vault", "String declarations", room);
     }
 
     private Level createIfStatementLevel() {
@@ -73,14 +95,14 @@ public class LevelManager {
         );
 
         Room room = new Room(
-                800,
-                600,
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
                 tokens("if", "(", ")", "{", "}", "x", "age", ">", ">=", "5", "18", "true", "=", "==", ";"),
-                new Door(730, 250, 40, 100),
+                createExitDoor(),
                 puzzle
         );
 
-        return new Level(2, "Condition Chamber", "If-statements", room);
+        return new Level(3, "Condition Chamber", "If-statements", room);
     }
 
     private Level createClassLevel() {
@@ -92,23 +114,27 @@ public class LevelManager {
         );
 
         Room room = new Room(
-                800,
-                600,
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
                 tokens("class", "Person", "Student", "{", "}", "public", "static", "5", ";"),
-                new Door(730, 250, 40, 100),
+                createExitDoor(),
                 puzzle
         );
 
-        return new Level(3, "Classroom Exit", "Classes and objects", room);
+        return new Level(4, "Classroom Exit", "Classes and objects", room);
     }
 
     private List<Token> tokens(String... values) {
         List<Token> tokens = new ArrayList<>();
         for (int i = 0; i < values.length; i++) {
-            double x = 80 + (i % 6) * 100;
-            double y = 100 + (i / 6) * 80;
-            tokens.add(new Token(values[i], x, y, 70, 32));
+            double x = 118 + (i % 6) * 104;
+            double y = 118 + (i / 6) * 78;
+            tokens.add(new Token(values[i], x, y, 46, 28));
         }
         return tokens;
+    }
+
+    private Door createExitDoor() {
+        return new Door(Constants.ROOM_WIDTH - 82, Constants.ROOM_HEIGHT / 2.0 - 59, 52, 118);
     }
 }

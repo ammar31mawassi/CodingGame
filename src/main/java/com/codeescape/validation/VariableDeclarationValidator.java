@@ -43,7 +43,6 @@ public class VariableDeclarationValidator implements CodeValidator {
     }
 
     private ValidationResult validateDeclaration(String line, boolean rememberVariable){
-        System.out.println("Validating variables in line: " + line);
         if(line == null || line.isBlank()){
             return ValidationResult.failure("Empty variable declaration");
         }
@@ -164,5 +163,8 @@ public class VariableDeclarationValidator implements CodeValidator {
     }
     private boolean validateBoolean(String value){
         return value.equals("true") || value.equals("false");
+    }
+    public static void resetVariables() {
+        variables.clear();
     }
 }
