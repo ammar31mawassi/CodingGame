@@ -2,11 +2,15 @@ package com.codeescape.validation;
 
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.Set;
 
 public class VariableDeclarationValidator implements CodeValidator {
     private static HashMap<String,String> variables;
     private static volatile VariableDeclarationValidator instance;
+    private static final Set<String> VALID_TYPES = Set.of("int", "double", "char", "String", "boolean");
+    private static final Set<String> INVALID_WORDS = Set.of(
+            "int", "double", "char", "String", "boolean", "while", "if", "for", "class"
+    );
 
     private VariableDeclarationValidator() {
         variables = new HashMap<>();
@@ -26,60 +30,101 @@ public class VariableDeclarationValidator implements CodeValidator {
         return variables.getOrDefault(variableName, "Does not exist");
     }
     public ValidationResult validate(String line){
+        return validateDeclaration(line, true);
+    }
+
+    public ValidationResult validateFieldDeclaration(String line) {
+        ValidationResult initializedFieldResult = validateDeclaration(line, false);
+        if (initializedFieldResult.isValid()) {
+            return initializedFieldResult;
+        }
+
+        return validateUninitializedFieldDeclaration(line);
+    }
+
+    private ValidationResult validateDeclaration(String line, boolean rememberVariable){
         System.out.println("Validating variables in line: " + line);
+        if(line == null || line.isBlank()){
+            return ValidationResult.failure("Empty variable declaration");
+        }
+        line = line.trim();
         if(!line.endsWith(";")){
             return ValidationResult.failure("Missing ; at the end of the line: " + line);
         }
         line = line.substring(0, line.length()-1);
-        String[] words = line.split(" ");
+        String[] words = line.trim().split("\\s+");
         if(words.length != 4)
             return ValidationResult.failure("Not Enough words in the code OR extra words in line: " + line);
         if(!words[2].equals("=")){
             return ValidationResult.failure("Missing = in the line: " + line);
         }
-        if(!validVarName(words[1])){ return ValidationResult.failure("Not valid Variable name in the line: " + line); }
+        if(!validVarName(words[1], rememberVariable)){ return ValidationResult.failure("Not valid Variable name in the line: " + line); }
         switch(words[0]){
             case "int":
                 if(!validateInteger(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                variables.putIfAbsent(words[1],"int");
+                rememberVariable(words[1], "int", rememberVariable);
                 return ValidationResult.success("Successful Integer Declaration");
             case "double":
                 if(!validateDouble(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                variables.putIfAbsent(words[1],"double");
+                rememberVariable(words[1], "double", rememberVariable);
                 return ValidationResult.success("Successful Double Declaration");
             case "char":
                 if(!validateChar(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                variables.putIfAbsent(words[1],"char");
+                rememberVariable(words[1], "char", rememberVariable);
                 return ValidationResult.success("Successful Char Declaration");
             case "String":
                 if(!validateString(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                variables.putIfAbsent(words[1],"String");
+                rememberVariable(words[1], "String", rememberVariable);
                 return ValidationResult.success("Successful String Declaration");
             case "boolean":
                 if(!validateBoolean(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                variables.putIfAbsent(words[1],"boolean");
+                rememberVariable(words[1], "boolean", rememberVariable);
                 return ValidationResult.success("Successful Boolean Declaration");
             default:
                 return ValidationResult.failure("Not a valid TYPE in line: " + line);
         }
     }
     private boolean validVarName(String name){
-        if(variables.containsKey(name)){
+        return validVarName(name, true);
+    }
+
+    private boolean validVarName(String name, boolean checkExistingVariable){
+        if(name == null || !name.matches("[A-Za-z_$][A-Za-z0-9_$]*")){
+            return false;
+        }
+        if(checkExistingVariable && variables.containsKey(name)){
             return  false;
         }
-        if(name.contains("-") || Character.isDigit(name.charAt(0))){ //cant contain - or start with a number
-            return  false;
+
+        return !INVALID_WORDS.contains(name);
+
+    }
+    private ValidationResult validateUninitializedFieldDeclaration(String line) {
+        if(line == null || line.isBlank()){
+            return ValidationResult.failure("Empty field declaration");
         }
-        String[] invalidWords = new String[]{"int", "double", "char", "String", "boolean","while"
-                ,"if","for","class"};
-        for(String invalidWord : invalidWords){// saved words in Java
-            if(name.equals(invalidWord)){
-                return  false;
-            }
+        line = line.trim();
+        if(!line.endsWith(";")){
+            return ValidationResult.failure("Missing ; at the end of the field: " + line);
+        }
+        line = line.substring(0, line.length()-1);
+        String[] words = line.trim().split("\\s+");
+        if(words.length != 2){
+            return ValidationResult.failure("Invalid field declaration: " + line);
+        }
+        if(!VALID_TYPES.contains(words[0])){
+            return ValidationResult.failure("Not a valid field type: " + line);
+        }
+        if(!validVarName(words[1], false)){
+            return ValidationResult.failure("Not a valid field name: " + line);
         }
 
-        return true;
-
+        return ValidationResult.success("Successful Field Declaration");
+    }
+    private void rememberVariable(String name, String type, boolean rememberVariable) {
+        if(rememberVariable){
+            variables.putIfAbsent(name, type);
+        }
     }
     private boolean validateInteger(String value){
         char[] chars = value.toCharArray();

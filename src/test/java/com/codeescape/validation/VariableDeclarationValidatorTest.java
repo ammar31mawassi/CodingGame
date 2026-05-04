@@ -29,6 +29,9 @@ class VariableDeclarationValidatorTest {
         assertFalse(validator.validate("int 5 = x;").isValid());
         assertFalse(validator.validate("int 5score = 10;").isValid());
         assertFalse(validator.validate("String first-name = \"Ammar\";").isValid());
+        assertFalse(validator.validate("int name! = 10;").isValid());
+        assertFalse(validator.validate("int x.y = 10;").isValid());
+        assertFalse(validator.validate("int @ = 10;").isValid());
     }
 
     @Test

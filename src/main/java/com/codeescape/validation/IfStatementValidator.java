@@ -1,16 +1,24 @@
 package com.codeescape.validation;
 
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class IfStatementValidator implements CodeValidator {
     private static final Set<String> VALID_OPERATORS = Set.of("==", "!=", ">", ">=", "<", "<=");
+    private static final Pattern IF_STATEMENT_PATTERN = Pattern.compile("^if\\s*\\((.*)\\)\\s*\\{\\s*}$");
 
     @Override
     public ValidationResult validate(String code) {
         if (!hasValidStructure(code)) return ValidationResult.failure("Invalid structure");
-        String condition = code.substring(code.indexOf("(") + 1, code.indexOf(")"));
+
+        String trimmedCode = code.trim();
+        Matcher matcher = IF_STATEMENT_PATTERN.matcher(trimmedCode);
+        matcher.matches();
+
+        String condition = matcher.group(1).trim();
         if (!isValidCondition(condition)) return ValidationResult.failure("Invalid condition");
-        String[] condTokens = condition.split(" ");
+        String[] condTokens = condition.split("\\s+");
         if (condTokens.length != 3) {
             if (condTokens.length == 1){
                 VariableDeclarationValidator.getInstance();
@@ -25,7 +33,7 @@ public class IfStatementValidator implements CodeValidator {
     }
 
     private boolean hasValidStructure(String code) {
-        return code != null && code.startsWith("if");
+        return code != null && IF_STATEMENT_PATTERN.matcher(code.trim()).matches();
     }
 
     private boolean isValidCondition(String condition) {
