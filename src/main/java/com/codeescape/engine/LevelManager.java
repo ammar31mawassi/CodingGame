@@ -50,7 +50,7 @@ public class LevelManager {
                 "Variables",
                 "Build a valid Java variable declaration.",
                 List.of("types", "variables", "assignment"),
-                new VariableDeclarationValidator()
+                VariableDeclarationValidator.getInstance()
         );
 
         Room room = new Room(

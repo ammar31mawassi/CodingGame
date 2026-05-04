@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VariableDeclarationValidatorTest {
-    private final VariableDeclarationValidator validator = new VariableDeclarationValidator();
+    private final VariableDeclarationValidator validator = VariableDeclarationValidator.getInstance();
 
     @Test
     void acceptsValidVariableDeclarations() {
