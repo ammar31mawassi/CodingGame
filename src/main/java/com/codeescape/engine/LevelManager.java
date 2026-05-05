@@ -127,11 +127,15 @@ public class LevelManager {
     private List<Token> tokens(String... values) {
         List<Token> tokens = new ArrayList<>();
         for (int i = 0; i < values.length; i++) {
-            double x = 118 + (i % 6) * 104;
+            double x = 118 + (i % 6) * 132;
             double y = 118 + (i / 6) * 78;
-            tokens.add(new Token(values[i], x, y, 46, 28));
+            tokens.add(new Token(values[i], x, y, tokenWidth(values[i]), 28));
         }
         return tokens;
+    }
+
+    private double tokenWidth(String value) {
+        return Math.max(46, value.length() * 11 + 24);
     }
 
     private Door createExitDoor() {

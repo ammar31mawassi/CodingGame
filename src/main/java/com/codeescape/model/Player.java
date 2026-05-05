@@ -31,6 +31,11 @@ public class Player {
         x += speed;
     }
 
+    public void moveBy(double deltaX, double deltaY) {
+        x += deltaX;
+        y += deltaY;
+    }
+
     public double getX() {
         return x;
     }
@@ -45,6 +50,10 @@ public class Player {
 
     public double getHeight() {
         return height;
+    }
+
+    public double getSpeed() {
+        return speed;
     }
 
     public void setPosition(double x, double y) {

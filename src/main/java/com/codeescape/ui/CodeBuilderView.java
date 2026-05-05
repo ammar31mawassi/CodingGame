@@ -66,22 +66,28 @@ public class CodeBuilderView {
         FlowPane actionControls = new FlowPane(8, 8);
         actionControls.getChildren().addAll(removeLastButton, clearButton, submitButton);
 
+        Label answerLabel = new Label("Answer");
+        answerLabel.getStyleClass().add("puzzle-copy");
+
+        Label availableTokensLabel = new Label("Available Tokens");
+        availableTokensLabel.getStyleClass().add("puzzle-copy");
+
         VBox root = new VBox(
                 12,
                 title,
                 instructions,
                 new Separator(),
-                new Label("Answer"),
+                answerLabel,
                 answerPreviewLabel,
                 selectedTokenBox,
-                new Label("Available Tokens"),
+                availableTokensLabel,
                 availableTokenBox,
                 actionControls,
                 feedbackLabel
         );
         root.setPadding(new Insets(20));
-        root.setPrefWidth(240);
-        root.setMaxWidth(240);
+        root.setPrefWidth(720);
+        root.setMaxWidth(720);
         return root;
     }
 
@@ -173,7 +179,11 @@ public class CodeBuilderView {
     private void refreshSelectedTokens() {
         selectedTokenBox.getChildren().setAll(
                 selectedTokens.stream()
-                        .map(Label::new)
+                        .map(token -> {
+                            Label label = new Label(token);
+                            label.getStyleClass().add("selected-token");
+                            return label;
+                        })
                         .toList()
         );
 

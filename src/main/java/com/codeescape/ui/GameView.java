@@ -9,51 +9,60 @@ import com.codeescape.model.Player;
 import com.codeescape.model.Token;
 import com.codeescape.util.Constants;
 import javafx.application.Platform;
+import javafx.animation.AnimationTimer;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
+import java.util.HashSet;
+import java.util.Set;
 
 public class GameView {
+    private static final double TERMINAL_WIDTH = 112;
+    private static final double TERMINAL_HEIGHT = 44;
+
     private final GameApp app;
     private final GameState gameState;
     private final Pane gamePane = new Pane();
-    private final InventoryView inventoryView;
     private final CollisionManager collisionManager = new CollisionManager();
-    private BorderPane root;
-    private VBox sidePanel;
+    private final Set<KeyCode> pressedKeys = new HashSet<>();
+    private StackPane root;
+    private Parent activeModal;
+    private AnimationTimer movementTimer;
+    private long lastFrameTime;
+    private boolean wasTouchingTerminal;
 
     public GameView(GameApp app, GameState gameState) {
         this.app = app;
         this.gameState = gameState;
-        this.inventoryView = new InventoryView(gameState.getInventory());
     }
 
     public Parent createView() {
         renderRoom();
 
-        VBox leftColumn = new VBox(16, createTitle(), gamePane, inventoryView.createView());
-        leftColumn.getStyleClass().add("game-left-column");
+        Button goalButton = createGoalButton();
 
-        sidePanel = createGoalPanel();
-
-        HBox content = new HBox(22, leftColumn, sidePanel);
-        content.setAlignment(Pos.TOP_LEFT);
-
-        root = new BorderPane(content);
+        root = new StackPane(gamePane, goalButton);
         root.getStyleClass().add("game-screen");
+        root.setPadding(new Insets(24));
         root.setFocusTraversable(true);
+        StackPane.setAlignment(goalButton, Pos.BOTTOM_RIGHT);
+        StackPane.setMargin(goalButton, new Insets(0, 34, 34, 0));
+
         setupKeyboardControls(root);
-        BorderPane.setMargin(content, new Insets(24));
+        startMovementLoop();
         return root;
     }
 
@@ -73,34 +82,102 @@ public class GameView {
 
     private void setupKeyboardControls(Parent root) {
         root.setOnKeyPressed(event -> {
-            KeyCode code = event.getCode();
-            Player player = gameState.getPlayer();
-
-            if (code == KeyCode.UP || code == KeyCode.W) {
-                player.moveUp();
-            } else if (code == KeyCode.DOWN || code == KeyCode.S) {
-                player.moveDown();
-            } else if (code == KeyCode.LEFT || code == KeyCode.A) {
-                player.moveLeft();
-            } else if (code == KeyCode.RIGHT || code == KeyCode.D) {
-                player.moveRight();
-            } else {
+            if (event.getCode() == KeyCode.ESCAPE && activeModal != null) {
+                closeModal();
+                event.consume();
                 return;
             }
 
-            keepPlayerInsideRoom();
-            checkCollisions();
-            renderRoom();
-            inventoryView.refresh();
-            maybeAdvanceLevel();
-            event.consume();
+            if (activeModal != null) {
+                return;
+            }
+
+            KeyCode code = event.getCode();
+            if (isMovementKey(code)) {
+                pressedKeys.add(code);
+                event.consume();
+            }
+        });
+
+        root.setOnKeyReleased(event -> {
+            if (isMovementKey(event.getCode())) {
+                pressedKeys.remove(event.getCode());
+                event.consume();
+            }
         });
 
         root.setOnMouseClicked(event -> root.requestFocus());
         Platform.runLater(root::requestFocus);
     }
 
-    private void updatePlayerPosition() {
+    private void startMovementLoop() {
+        movementTimer = new AnimationTimer() {
+            @Override
+            public void handle(long now) {
+                if (lastFrameTime == 0) {
+                    lastFrameTime = now;
+                    return;
+                }
+
+                double elapsedSeconds = (now - lastFrameTime) / 1_000_000_000.0;
+                lastFrameTime = now;
+                updateMovement(elapsedSeconds);
+            }
+        };
+        movementTimer.start();
+    }
+
+    private void updateMovement(double elapsedSeconds) {
+        if (activeModal != null || pressedKeys.isEmpty()) {
+            return;
+        }
+
+        Player player = gameState.getPlayer();
+        double deltaX = 0;
+        double deltaY = 0;
+
+        if (pressedKeys.contains(KeyCode.LEFT) || pressedKeys.contains(KeyCode.A)) {
+            deltaX -= 1;
+        }
+        if (pressedKeys.contains(KeyCode.RIGHT) || pressedKeys.contains(KeyCode.D)) {
+            deltaX += 1;
+        }
+        if (pressedKeys.contains(KeyCode.UP) || pressedKeys.contains(KeyCode.W)) {
+            deltaY -= 1;
+        }
+        if (pressedKeys.contains(KeyCode.DOWN) || pressedKeys.contains(KeyCode.S)) {
+            deltaY += 1;
+        }
+
+        if (deltaX == 0 && deltaY == 0) {
+            return;
+        }
+
+        if (deltaX != 0 && deltaY != 0) {
+            double diagonalScale = 1 / Math.sqrt(2);
+            deltaX *= diagonalScale;
+            deltaY *= diagonalScale;
+        }
+
+        double movement = player.getSpeed() * elapsedSeconds;
+        player.moveBy(deltaX * movement, deltaY * movement);
+
+        keepPlayerInsideRoom();
+        checkCollisions();
+        renderRoom();
+        maybeAdvanceLevel();
+        maybeOpenTerminal();
+    }
+
+    private boolean isMovementKey(KeyCode code) {
+        return code == KeyCode.UP
+                || code == KeyCode.DOWN
+                || code == KeyCode.LEFT
+                || code == KeyCode.RIGHT
+                || code == KeyCode.W
+                || code == KeyCode.A
+                || code == KeyCode.S
+                || code == KeyCode.D;
     }
 
     private void checkCollisions() {
@@ -112,65 +189,83 @@ public class GameView {
     }
 
     private void openCodeBuilder() {
+        if (activeModal != null) {
+            return;
+        }
+
         CodeBuilderView codeBuilderView = new CodeBuilderView(
                 gameState.getInventory(),
                 gameState.getCurrentLevel().getRoom().getPuzzle(),
                 () -> {
                     gameState.getCurrentLevel().getRoom().getDoor().unlock();
-                    refresh();
+                    renderRoom();
                 }
         );
+
         Parent builder = codeBuilderView.createView();
-
-        Button closeButton = new Button("Back");
-        closeButton.getStyleClass().add("pixel-button");
-        closeButton.setOnAction(event -> {
-            showGoalPanel();
-            Platform.runLater(root::requestFocus);
-        });
-
-        sidePanel.getChildren().setAll(closeButton, builder);
-        Platform.runLater(builder::requestFocus);
+        showModal(builder, 820, 500);
     }
 
-    private void refresh() {
-        inventoryView.refresh();
-        renderRoom();
-        showGoalPanel();
-    }
+    private void showGoalWindow() {
+        if (activeModal != null) {
+            return;
+        }
 
-    private Label createTitle() {
-        Level level = gameState.getCurrentLevel();
-        Label title = new Label("CODE ESCAPE: " + level.getLevelNumber() + ". " + level.getConcept());
-        title.getStyleClass().add("game-title");
-        return title;
-    }
-
-    private VBox createGoalPanel() {
         Level level = gameState.getCurrentLevel();
 
-        Label roomLabel = new Label("Goal:");
-        roomLabel.getStyleClass().add("panel-heading");
+        Label title = new Label("Goal");
+        title.getStyleClass().add("modal-title");
 
         Label goalLabel = new Label(level.getRoom().getPuzzle().getInstructions());
+        goalLabel.getStyleClass().add("modal-copy");
+        goalLabel.setWrapText(true);
+
         Label doorLabel = new Label(level.getRoom().getDoor().isLocked() ? "Door: locked" : "Door: open");
+        doorLabel.getStyleClass().add("modal-copy");
 
-        Button puzzleButton = new Button("Open Terminal");
-        puzzleButton.getStyleClass().add("pixel-button");
-        puzzleButton.setOnAction(event -> openCodeBuilder());
-
-        VBox sidebar = new VBox(12, roomLabel, goalLabel);
+        VBox content = new VBox(14, title, goalLabel, doorLabel);
         String example = exampleForLevel(level);
         if (!example.isBlank()) {
             Label buildLabel = new Label("Build:");
+            buildLabel.getStyleClass().add("modal-copy");
             Label exampleLabel = new Label(example);
-            sidebar.getChildren().addAll(buildLabel, exampleLabel);
+            exampleLabel.getStyleClass().add("answer-preview");
+            content.getChildren().addAll(buildLabel, exampleLabel);
         }
-        sidebar.getChildren().addAll(doorLabel, puzzleButton);
-        sidebar.setPadding(new Insets(18));
-        sidebar.setPrefWidth(270);
-        sidebar.getStyleClass().add("goal-panel");
-        return sidebar;
+
+        content.setMaxWidth(560);
+        showModal(content, 620, 330);
+    }
+
+    private void showModal(Parent content, double width, double height) {
+        pressedKeys.clear();
+
+        Button closeButton = new Button("X");
+        closeButton.getStyleClass().add("close-button");
+        closeButton.setOnAction(event -> closeModal());
+
+        HBox closeRow = new HBox(closeButton);
+        closeRow.setAlignment(Pos.TOP_LEFT);
+
+        VBox modal = new VBox(12, closeRow, content);
+        modal.setPadding(new Insets(16));
+        modal.setMaxSize(width, height);
+        modal.setPrefSize(width, height);
+        modal.getStyleClass().add("map-modal");
+
+        activeModal = modal;
+        root.getChildren().add(modal);
+        StackPane.setAlignment(modal, Pos.CENTER);
+        Platform.runLater(modal::requestFocus);
+    }
+
+    private void closeModal() {
+        if (activeModal != null) {
+            root.getChildren().remove(activeModal);
+            activeModal = null;
+        }
+        pressedKeys.clear();
+        Platform.runLater(root::requestFocus);
     }
 
     private String exampleForLevel(Level level) {
@@ -261,17 +356,54 @@ public class GameView {
 
     private void addTerminal() {
         StackPane terminal = new StackPane();
-        terminal.setLayoutX(Constants.ROOM_WIDTH - 82);
-        terminal.setLayoutY(Constants.ROOM_HEIGHT - 78);
-        terminal.setPrefSize(54, 44);
+        terminal.setLayoutX(terminalX());
+        terminal.setLayoutY(terminalY());
+        terminal.setPrefSize(TERMINAL_WIDTH, TERMINAL_HEIGHT);
         terminal.getStyleClass().add("terminal-tile");
         terminal.setOnMouseClicked(event -> openCodeBuilder());
 
-        Label prompt = new Label(">");
+        Label prompt = new Label("Terminal");
         prompt.getStyleClass().add("terminal-text");
         terminal.getChildren().add(prompt);
 
         gamePane.getChildren().add(terminal);
+    }
+
+    private Button createGoalButton() {
+        Button button = new Button();
+        button.setGraphic(createGoalIcon());
+        button.getStyleClass().add("goal-icon-button");
+        button.setOnAction(event -> showGoalWindow());
+        return button;
+    }
+
+    private Node createGoalIcon() {
+        StackPane icon = new StackPane();
+        icon.setPrefSize(42, 42);
+
+        Circle outer = new Circle(18);
+        outer.setFill(Color.TRANSPARENT);
+        outer.setStroke(Color.web("#f1ce54"));
+        outer.setStrokeWidth(4);
+
+        Circle middle = new Circle(10);
+        middle.setFill(Color.TRANSPARENT);
+        middle.setStroke(Color.web("#f1ce54"));
+        middle.setStrokeWidth(3);
+
+        Circle center = new Circle(3);
+        center.setFill(Color.web("#f1ce54"));
+
+        Line vertical = new Line(21, 2, 21, 40);
+        vertical.setStroke(Color.web("#f1ce54"));
+        vertical.setStrokeWidth(2);
+
+        Line horizontal = new Line(2, 21, 40, 21);
+        horizontal.setStroke(Color.web("#f1ce54"));
+        horizontal.setStrokeWidth(2);
+
+        icon.getChildren().addAll(outer, middle, vertical, horizontal, center);
+        return icon;
     }
 
     private void keepPlayerInsideRoom() {
@@ -289,16 +421,31 @@ public class GameView {
                 gameState.getCurrentLevel().getRoom().getDoor()
         )) {
             gameState.getCurrentLevel().complete();
-            app.goToNextLevel();
+            stopMovementLoop();
+            app.showLevelComplete();
         }
     }
 
-    private void showGoalPanel() {
-        if (sidePanel == null) {
-            return;
+    private void stopMovementLoop() {
+        if (movementTimer != null) {
+            movementTimer.stop();
         }
+    }
 
-        VBox goalPanel = createGoalPanel();
-        sidePanel.getChildren().setAll(goalPanel.getChildren());
+    private void maybeOpenTerminal() {
+        Player player = gameState.getPlayer();
+        boolean touchingTerminal = player.intersects(terminalX(), terminalY(), TERMINAL_WIDTH, TERMINAL_HEIGHT);
+        if (touchingTerminal && !wasTouchingTerminal) {
+            openCodeBuilder();
+        }
+        wasTouchingTerminal = touchingTerminal;
+    }
+
+    private double terminalX() {
+        return Constants.ROOM_WIDTH / 2.0 - TERMINAL_WIDTH / 2.0;
+    }
+
+    private double terminalY() {
+        return Constants.ROOM_HEIGHT / 2.0 - TERMINAL_HEIGHT / 2.0;
     }
 }

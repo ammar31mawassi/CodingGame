@@ -18,13 +18,22 @@ public class LevelCompleteView {
     }
 
     public Parent createView() {
-        Label title = new Label("Level Complete");
-        Label concept = new Label("Concept learned: " + completedLevel.getConcept());
+        Label title = new Label("Congrats!");
+        title.getStyleClass().add("level-complete-title");
+
+        Label message = new Label("Now to the next level.");
+        message.getStyleClass().add("level-complete-message");
+
+        Label concept = new Label("Completed: " + completedLevel.getConcept());
+        concept.getStyleClass().add("level-complete-concept");
+
         Button nextButton = new Button("Next Level");
+        nextButton.getStyleClass().add("pixel-button");
         nextButton.setOnAction(event -> app.goToNextLevel());
 
-        VBox root = new VBox(20, title, concept, nextButton);
+        VBox root = new VBox(20, title, message, concept, nextButton);
         root.setAlignment(Pos.CENTER);
+        root.getStyleClass().add("level-complete-screen");
         return root;
     }
 }
