@@ -6,18 +6,32 @@ public class Token {
     private final double y;
     private final double width;
     private final double height;
+    private final TokenType type;
     private boolean collected;
 
     public Token(String value, double x, double y, double width, double height) {
+        this(value, x, y, width, height, TokenType.CODE);
+    }
+
+    public Token(String value, double x, double y, double width, double height, TokenType type) {
         this.value = value;
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.type = type;
     }
 
     public String getValue() {
         return value;
+    }
+
+    public TokenType getType() {
+        return type;
+    }
+
+    public boolean isCodeToken() {
+        return type == TokenType.CODE;
     }
 
     public boolean isCollected() {

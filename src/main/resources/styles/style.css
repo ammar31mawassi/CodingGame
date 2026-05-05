@@ -41,10 +41,51 @@
     -fx-border-width: 0 0 4 4;
 }
 
+.room-goal-token {
+    -fx-background-color: #f1f1ec;
+    -fx-border-color: #b9bdc9;
+}
+
+.room-helper-token {
+    -fx-background-color: #69d7ff;
+    -fx-border-color: #2b74a8;
+}
+
 .room-token-text {
     -fx-font-size: 16px;
     -fx-font-weight: bold;
     -fx-text-fill: #33323a;
+}
+
+.room-wall {
+    -fx-fill: #454a5f;
+}
+
+.room-chest {
+    -fx-background-color: #9b6538;
+    -fx-border-color: #5d3828;
+    -fx-border-width: 0 0 6 6;
+}
+
+.room-chest-open {
+    -fx-background-color: #5d3828;
+    -fx-border-color: #33231d;
+}
+
+.room-chest-text {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f1ce54;
+}
+
+.pickup-message {
+    -fx-background-color: rgba(17, 19, 28, 0.88);
+    -fx-border-color: #f1ce54;
+    -fx-border-width: 4;
+    -fx-padding: 6 10 7 10;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f1f1ec;
 }
 
 .player-head,
@@ -193,6 +234,13 @@
     -fx-wrap-text: true;
 }
 
+.modal-helper-copy {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #69d7ff;
+    -fx-wrap-text: true;
+}
+
 .puzzle-title {
     -fx-font-size: 22px;
     -fx-font-weight: bold;
@@ -231,4 +279,11 @@
 .level-complete-concept {
     -fx-font-size: 20px;
     -fx-text-fill: #b9bdc9;
+}
+
+.level-complete-explanation {
+    -fx-font-size: 18px;
+    -fx-line-spacing: 4;
+    -fx-text-fill: #d9d9d7;
+    -fx-text-alignment: center;
 }

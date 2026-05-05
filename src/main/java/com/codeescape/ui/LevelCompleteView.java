@@ -27,11 +27,20 @@ public class LevelCompleteView {
         Label concept = new Label("Completed: " + completedLevel.getConcept());
         concept.getStyleClass().add("level-complete-concept");
 
+        Label explanation = new Label(completedLevel.getCompletionExplanation());
+        explanation.setWrapText(true);
+        explanation.setMaxWidth(820);
+        explanation.getStyleClass().add("level-complete-explanation");
+
         Button nextButton = new Button("Next Level");
         nextButton.getStyleClass().add("pixel-button");
         nextButton.setOnAction(event -> app.goToNextLevel());
 
-        VBox root = new VBox(20, title, message, concept, nextButton);
+        VBox root = new VBox(20, title, message, concept);
+        if (!completedLevel.getCompletionExplanation().isBlank()) {
+            root.getChildren().add(explanation);
+        }
+        root.getChildren().add(nextButton);
         root.setAlignment(Pos.CENTER);
         root.getStyleClass().add("level-complete-screen");
         return root;

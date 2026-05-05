@@ -3,10 +3,15 @@ package com.codeescape.ui;
 import com.codeescape.app.GameApp;
 import com.codeescape.engine.CollisionManager;
 import com.codeescape.engine.GameState;
+import com.codeescape.model.Chest;
+import com.codeescape.model.ChestReward;
 import com.codeescape.model.Door;
 import com.codeescape.model.Level;
 import com.codeescape.model.Player;
+import com.codeescape.model.Room;
 import com.codeescape.model.Token;
+import com.codeescape.model.TokenType;
+import com.codeescape.model.Wall;
 import com.codeescape.util.Constants;
 import javafx.application.Platform;
 import javafx.animation.AnimationTimer;
@@ -17,9 +22,9 @@ import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -27,11 +32,13 @@ import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class GameView {
     private static final double TERMINAL_WIDTH = 112;
     private static final double TERMINAL_HEIGHT = 44;
+    private static final long PICKUP_MESSAGE_DURATION_NANOS = 2_000_000_000L;
 
     private final GameApp app;
     private final GameState gameState;
@@ -43,6 +50,8 @@ public class GameView {
     private AnimationTimer movementTimer;
     private long lastFrameTime;
     private boolean wasTouchingTerminal;
+    private String pickupMessage = "";
+    private long pickupMessageExpiresAt;
 
     public GameView(GameApp app, GameState gameState) {
         this.app = app;
@@ -74,10 +83,13 @@ public class GameView {
         gamePane.getStyleClass().add("game-room");
 
         addRoomFloor();
+        addWalls();
         addDoor();
         addTerminal();
+        addChests();
         addTokens();
         addPlayer();
+        addPickupMessage();
     }
 
     private void setupKeyboardControls(Parent root) {
@@ -160,9 +172,14 @@ public class GameView {
         }
 
         double movement = player.getSpeed() * elapsedSeconds;
+        double previousX = player.getX();
+        double previousY = player.getY();
         player.moveBy(deltaX * movement, deltaY * movement);
 
         keepPlayerInsideRoom();
+        if (collisionManager.hasWallCollision(player, gameState.getCurrentLevel().getRoom())) {
+            player.setPosition(previousX, previousY);
+        }
         checkCollisions();
         renderRoom();
         maybeAdvanceLevel();
@@ -181,11 +198,23 @@ public class GameView {
     }
 
     private void checkCollisions() {
-        collisionManager.handleTokenCollection(
+        List<Token> collectedTokens = collisionManager.handleTokenCollection(
                 gameState.getPlayer(),
                 gameState.getCurrentLevel().getRoom(),
                 gameState.getInventory()
         );
+        for (Token token : collectedTokens) {
+            showPickupMessage(token);
+        }
+
+        ChestReward reward = collisionManager.handleChestInteraction(
+                gameState.getPlayer(),
+                gameState.getCurrentLevel().getRoom(),
+                gameState.getInventory()
+        );
+        if (reward != null) {
+            showPickupMessage(reward);
+        }
     }
 
     private void openCodeBuilder() {
@@ -212,29 +241,39 @@ public class GameView {
         }
 
         Level level = gameState.getCurrentLevel();
+        Room room = level.getRoom();
+        boolean goalFound = room.isGoalFound();
 
         Label title = new Label("Goal");
         title.getStyleClass().add("modal-title");
 
-        Label goalLabel = new Label(level.getRoom().getPuzzle().getInstructions());
+        Label goalLabel = new Label(goalFound
+                ? room.getPuzzle().getInstructions()
+                : "The goal of this level has not been found yet.");
         goalLabel.getStyleClass().add("modal-copy");
         goalLabel.setWrapText(true);
+        goalLabel.setPrefWidth(640);
+        goalLabel.setMaxWidth(640);
+        goalLabel.setMinHeight(Region.USE_PREF_SIZE);
 
-        Label doorLabel = new Label(level.getRoom().getDoor().isLocked() ? "Door: locked" : "Door: open");
-        doorLabel.getStyleClass().add("modal-copy");
+        VBox content = new VBox(14, title, goalLabel);
+        if (goalFound) {
+            Label doorLabel = new Label(room.getDoor().isLocked() ? "Door: locked" : "Door: open");
+            doorLabel.getStyleClass().add("modal-copy");
+            content.getChildren().add(doorLabel);
 
-        VBox content = new VBox(14, title, goalLabel, doorLabel);
-        String example = exampleForLevel(level);
-        if (!example.isBlank()) {
-            Label buildLabel = new Label("Build:");
-            buildLabel.getStyleClass().add("modal-copy");
-            Label exampleLabel = new Label(example);
-            exampleLabel.getStyleClass().add("answer-preview");
-            content.getChildren().addAll(buildLabel, exampleLabel);
+            if (shouldShowGoalHelper(level)) {
+                Label helperLabel = new Label(level.getGoalHelper());
+                helperLabel.getStyleClass().add("modal-helper-copy");
+                helperLabel.setWrapText(true);
+                helperLabel.setPrefWidth(640);
+                helperLabel.setMaxWidth(640);
+                helperLabel.setMinHeight(Region.USE_PREF_SIZE);
+                content.getChildren().add(helperLabel);
+            }
         }
-
-        content.setMaxWidth(560);
-        showModal(content, 620, 330);
+        content.setMaxWidth(640);
+        showModal(content, 720, 300);
     }
 
     private void showModal(Parent content, double width, double height) {
@@ -268,15 +307,6 @@ public class GameView {
         Platform.runLater(root::requestFocus);
     }
 
-    private String exampleForLevel(Level level) {
-        return switch (level.getLevelNumber()) {
-            case 1 -> "int x = 5;";
-            case 3 -> "if (x > 5) {}";
-            case 4 -> "class Person {}";
-            default -> "";
-        };
-    }
-
     private void addRoomFloor() {
         Rectangle floor = new Rectangle(Constants.ROOM_WIDTH, Constants.ROOM_HEIGHT);
         floor.getStyleClass().add("room-floor");
@@ -300,6 +330,11 @@ public class GameView {
             tokenTile.setLayoutY(token.getY());
             tokenTile.setPrefSize(token.getWidth(), token.getHeight());
             tokenTile.getStyleClass().add("room-token");
+            if (token.getType() == TokenType.GOAL) {
+                tokenTile.getStyleClass().add("room-goal-token");
+            } else if (token.getType() == TokenType.HELPER) {
+                tokenTile.getStyleClass().add("room-helper-token");
+            }
 
             Label value = new Label(token.getValue());
             value.getStyleClass().add("room-token-text");
@@ -307,6 +342,49 @@ public class GameView {
 
             gamePane.getChildren().add(tokenTile);
         }
+    }
+
+    private void addWalls() {
+        for (Wall wall : gameState.getCurrentLevel().getRoom().getWalls()) {
+            Rectangle wallShape = new Rectangle(wall.getWidth(), wall.getHeight());
+            wallShape.setLayoutX(wall.getX());
+            wallShape.setLayoutY(wall.getY());
+            wallShape.getStyleClass().add("room-wall");
+            gamePane.getChildren().add(wallShape);
+        }
+    }
+
+    private void addChests() {
+        for (Chest chest : gameState.getCurrentLevel().getRoom().getChests()) {
+            StackPane chestTile = new StackPane();
+            chestTile.setLayoutX(chest.getX());
+            chestTile.setLayoutY(chest.getY());
+            chestTile.setPrefSize(chest.getWidth(), chest.getHeight());
+            chestTile.getStyleClass().add("room-chest");
+            if (chest.isOpened()) {
+                chestTile.getStyleClass().add("room-chest-open");
+            }
+
+            Label mark = new Label(chest.isOpened() ? "" : "?");
+            mark.getStyleClass().add("room-chest-text");
+            chestTile.getChildren().add(mark);
+
+            gamePane.getChildren().add(chestTile);
+        }
+    }
+
+    private void addPickupMessage() {
+        if (pickupMessage.isBlank() || System.nanoTime() > pickupMessageExpiresAt) {
+            return;
+        }
+
+        Label message = new Label(pickupMessage);
+        message.setAlignment(Pos.CENTER);
+        message.setPrefWidth(360);
+        message.setLayoutX(Constants.ROOM_WIDTH / 2.0 - 180);
+        message.setLayoutY(54);
+        message.getStyleClass().add("pickup-message");
+        gamePane.getChildren().add(message);
     }
 
     private void addPlayer() {
@@ -447,5 +525,37 @@ public class GameView {
 
     private double terminalY() {
         return Constants.ROOM_HEIGHT / 2.0 - TERMINAL_HEIGHT / 2.0;
+    }
+
+    private boolean shouldShowGoalHelper(Level level) {
+        if (level.getGoalHelper().isBlank()) {
+            return false;
+        }
+
+        Room room = level.getRoom();
+        return !room.hasHiddenHelper() || room.isHelperFound();
+    }
+
+    private void showPickupMessage(Token token) {
+        if (token.isCodeToken()) {
+            return;
+        }
+
+        String label = token.getType() == TokenType.GOAL ? "Found: Goal" : "Found: Helper";
+        setPickupMessage(label);
+    }
+
+    private void showPickupMessage(ChestReward reward) {
+        String label = switch (reward.getType()) {
+            case CODE -> "Found: " + reward.getValue();
+            case GOAL -> "Found: Goal";
+            case HELPER -> "Found: Helper";
+        };
+        setPickupMessage(label);
+    }
+
+    private void setPickupMessage(String message) {
+        pickupMessage = message;
+        pickupMessageExpiresAt = System.nanoTime() + PICKUP_MESSAGE_DURATION_NANOS;
     }
 }
