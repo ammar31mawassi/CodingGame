@@ -12,6 +12,7 @@ import javafx.application.Application;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import java.util.List;
 
 public class GameApp extends Application {
     private Stage primaryStage;
@@ -40,6 +41,23 @@ public class GameApp extends Application {
         gameState = new GameState();
         gameState.resetForLevel(levelManager.getCurrentLevel());
         showGameLevel(levelManager.getCurrentLevel());
+    }
+
+    public void startAtLevel(int levelNumber) {
+        levelManager = new LevelManager();
+        levelManager.loadLevels();
+        Level level = levelManager.goToLevel(levelNumber);
+        gameState = new GameState();
+        gameState.resetForLevel(level);
+        showGameLevel(level);
+    }
+
+    public List<Level> getAvailableLevels() {
+        if (levelManager == null) {
+            levelManager = new LevelManager();
+            levelManager.loadLevels();
+        }
+        return levelManager.getLevels();
     }
 
     public void showGameLevel(Level level) {

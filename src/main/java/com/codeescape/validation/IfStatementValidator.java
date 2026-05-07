@@ -21,6 +21,7 @@ public class IfStatementValidator implements CodeValidator {
         String[] condTokens = condition.split("\\s+");
         if (condTokens.length != 3) {
             if (condTokens.length == 1){
+                if (isBooleanLiteral(condTokens[0])) return ValidationResult.success("Valid if");
                 VariableDeclarationValidator.getInstance();
                 String varName = VariableDeclarationValidator.checkNameOfVariable(condTokens[0]);
                 if (varName.equals("boolean")) return ValidationResult.success("Valid if");
@@ -42,5 +43,9 @@ public class IfStatementValidator implements CodeValidator {
 
     private boolean isValidOperator(String operator) {
         return VALID_OPERATORS.contains(operator);
+    }
+
+    private boolean isBooleanLiteral(String token) {
+        return token.equals("true") || token.equals("false");
     }
 }

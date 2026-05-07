@@ -7,21 +7,27 @@ import com.codeescape.model.Chest;
 import com.codeescape.model.ChestReward;
 import com.codeescape.model.Door;
 import com.codeescape.model.Level;
+import com.codeescape.model.MultipleChoiceQuestion;
 import com.codeescape.model.Player;
 import com.codeescape.model.Room;
 import com.codeescape.model.Token;
 import com.codeescape.model.TokenType;
 import com.codeescape.model.Wall;
 import com.codeescape.util.Constants;
+import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.animation.AnimationTimer;
+import javafx.util.Duration;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
@@ -31,27 +37,43 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 public class GameView {
     private static final double TERMINAL_WIDTH = 112;
     private static final double TERMINAL_HEIGHT = 44;
     private static final long PICKUP_MESSAGE_DURATION_NANOS = 2_000_000_000L;
+    private static final long NOTIFICATION_STACK_STEP_NANOS = 650_000_000L;
+    private static final long NOTIFICATION_REFRESH_GRACE_NANOS = 50_000_000L;
+    private static final String JAVA_LIFE_IMAGE_PATH = "/images/java-14-logo-png-transparent.png";
+    private static final String BUG_LIFE_IMAGE_PATH = "/images/bug-icon.png";
+
+    private enum ModalType {
+        GOAL,
+        TERMINAL,
+        CHALLENGE
+    }
 
     private final GameApp app;
     private final GameState gameState;
     private final Pane gamePane = new Pane();
     private final CollisionManager collisionManager = new CollisionManager();
     private final Set<KeyCode> pressedKeys = new HashSet<>();
+    private final List<PickupNotification> pickupNotifications = new ArrayList<>();
     private StackPane root;
+    private HBox bugHud;
     private Parent activeModal;
+    private ModalType activeModalType;
+    private CodeBuilderView activeCodeBuilderView;
+    private Image javaLifeImage;
+    private Image bugLifeImage;
     private AnimationTimer movementTimer;
     private long lastFrameTime;
     private boolean wasTouchingTerminal;
-    private String pickupMessage = "";
-    private long pickupMessageExpiresAt;
 
     public GameView(GameApp app, GameState gameState) {
         this.app = app;
@@ -59,11 +81,15 @@ public class GameView {
     }
 
     public Parent createView() {
+        bugHud = createBugHud();
         renderRoom();
 
         Button goalButton = createGoalButton();
+        VBox gameLayout = new VBox(10, bugHud, gamePane);
+        gameLayout.setAlignment(Pos.CENTER);
+        gameLayout.getStyleClass().add("game-layout");
 
-        root = new StackPane(gamePane, goalButton);
+        root = new StackPane(gameLayout, goalButton);
         root.getStyleClass().add("game-screen");
         root.setPadding(new Insets(24));
         root.setFocusTraversable(true);
@@ -85,22 +111,20 @@ public class GameView {
         addRoomFloor();
         addWalls();
         addDoor();
+        addChallengeDoor();
         addTerminal();
         addChests();
         addTokens();
         addPlayer();
         addPickupMessage();
+        refreshBugHud();
     }
 
     private void setupKeyboardControls(Parent root) {
-        root.setOnKeyPressed(event -> {
+        root.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             if (event.getCode() == KeyCode.ESCAPE && activeModal != null) {
                 closeModal();
                 event.consume();
-                return;
-            }
-
-            if (activeModal != null) {
                 return;
             }
 
@@ -111,7 +135,7 @@ public class GameView {
             }
         });
 
-        root.setOnKeyReleased(event -> {
+        root.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
             if (isMovementKey(event.getCode())) {
                 pressedKeys.remove(event.getCode());
                 event.consume();
@@ -140,7 +164,7 @@ public class GameView {
     }
 
     private void updateMovement(double elapsedSeconds) {
-        if (activeModal != null || pressedKeys.isEmpty()) {
+        if (pressedKeys.isEmpty()) {
             return;
         }
 
@@ -180,6 +204,10 @@ public class GameView {
         if (collisionManager.hasWallCollision(player, gameState.getCurrentLevel().getRoom())) {
             player.setPosition(previousX, previousY);
         }
+        if (handleChallengeDoorCollision(player, previousX, previousY)) {
+            renderRoom();
+            return;
+        }
         checkCollisions();
         renderRoom();
         maybeAdvanceLevel();
@@ -215,24 +243,113 @@ public class GameView {
         if (reward != null) {
             showPickupMessage(reward);
         }
+
+        if (!collectedTokens.isEmpty() || reward != null) {
+            refreshActiveModal();
+        }
+    }
+
+    private boolean handleChallengeDoorCollision(Player player, double previousX, double previousY) {
+        Room room = gameState.getCurrentLevel().getRoom();
+        Door challengeDoor = room.getChallengeDoor();
+        if (!room.hasChallengeDoor()
+                || challengeDoor == null
+                || !challengeDoor.isLocked()
+                || !challengeDoor.intersects(player)) {
+            return false;
+        }
+
+        player.setPosition(previousX, previousY);
+        showChallengeQuestion();
+        return true;
+    }
+
+    private void showChallengeQuestion() {
+        Room room = gameState.getCurrentLevel().getRoom();
+        MultipleChoiceQuestion question = room.getChallengeQuestion();
+        if (question == null || question.isSolved()) {
+            return;
+        }
+        if (activeModal != null) {
+            if (activeModalType == ModalType.CHALLENGE || activeModalType == ModalType.TERMINAL) {
+                return;
+            }
+            closeModal();
+        }
+
+        Label title = new Label("Question Door");
+        title.getStyleClass().add("modal-title");
+
+        Label prompt = new Label(question.getPrompt());
+        prompt.getStyleClass().add("modal-copy");
+        prompt.setWrapText(true);
+
+        Label code = new Label(question.getCode());
+        code.getStyleClass().add("answer-preview");
+        code.setMinHeight(Region.USE_PREF_SIZE);
+
+        VBox choices = new VBox(10);
+        for (String choice : question.getChoices()) {
+            Button choiceButton = new Button(choice);
+            choiceButton.getStyleClass().add("pixel-button");
+            choiceButton.setMaxWidth(Double.MAX_VALUE);
+            choiceButton.setOnAction(event -> answerChallengeQuestion(choice));
+            choices.getChildren().add(choiceButton);
+        }
+
+        VBox content = new VBox(14, title, prompt, code, choices);
+        content.setMaxWidth(560);
+        showModal(content, 640, 420, ModalType.CHALLENGE);
+    }
+
+    private void answerChallengeQuestion(String choice) {
+        Room room = gameState.getCurrentLevel().getRoom();
+        MultipleChoiceQuestion question = room.getChallengeQuestion();
+        if (question == null) {
+            return;
+        }
+
+        if (question.answer(choice)) {
+            ChestReward reward = question.getReward();
+            room.getChallengeDoor().unlock();
+            room.collectReward(reward, gameState.getInventory());
+            closeModal();
+            setPickupMessage("Correct! Room door is open.", "success-message");
+            if (reward != null) {
+                setPickupMessage(doorRewardMessage(reward), "pickup-message");
+            }
+            renderRoom();
+            refreshActiveModal();
+            return;
+        }
+
+        closeModal();
+        recordMistake();
     }
 
     private void openCodeBuilder() {
         if (activeModal != null) {
-            return;
+            if (activeModalType == ModalType.TERMINAL) {
+                return;
+            }
+            closeModal();
         }
 
-        CodeBuilderView codeBuilderView = new CodeBuilderView(
+        activeCodeBuilderView = new CodeBuilderView(
                 gameState.getInventory(),
                 gameState.getCurrentLevel().getRoom().getPuzzle(),
-                () -> {
+                gameState.getCurrentLevel().getRoom().isGoalFound(),
+                result -> {
                     gameState.getCurrentLevel().getRoom().getDoor().unlock();
+                    closeModal();
+                    setPickupMessage("'" + result.getMessage() + "' Door is now open!", "success-message");
                     renderRoom();
-                }
+                },
+                result -> recordMistake()
         );
 
-        Parent builder = codeBuilderView.createView();
-        showModal(builder, 820, 500);
+        Parent builder = activeCodeBuilderView.createView();
+        showModal(builder, 920, 620, ModalType.TERMINAL);
     }
 
     private void showGoalWindow() {
@@ -273,12 +390,10 @@ public class GameView {
             }
         }
         content.setMaxWidth(640);
-        showModal(content, 720, 300);
+        showModal(content, 720, 300, ModalType.GOAL);
     }
 
-    private void showModal(Parent content, double width, double height) {
-        pressedKeys.clear();
-
+    private void showModal(Parent content, double width, double height, ModalType modalType) {
         Button closeButton = new Button("X");
         closeButton.getStyleClass().add("close-button");
         closeButton.setOnAction(event -> closeModal());
@@ -293,6 +408,7 @@ public class GameView {
         modal.getStyleClass().add("map-modal");
 
         activeModal = modal;
+        activeModalType = modalType;
         root.getChildren().add(modal);
         StackPane.setAlignment(modal, Pos.CENTER);
         Platform.runLater(modal::requestFocus);
@@ -300,10 +416,14 @@ public class GameView {
 
     private void closeModal() {
         if (activeModal != null) {
+            ModalType closingModalType = activeModalType;
             root.getChildren().remove(activeModal);
             activeModal = null;
+            activeModalType = null;
+            if (closingModalType == ModalType.TERMINAL) {
+                activeCodeBuilderView = null;
+            }
         }
-        pressedKeys.clear();
         Platform.runLater(root::requestFocus);
     }
 
@@ -374,17 +494,99 @@ public class GameView {
     }
 
     private void addPickupMessage() {
-        if (pickupMessage.isBlank() || System.nanoTime() > pickupMessageExpiresAt) {
+        long now = System.nanoTime();
+        pickupNotifications.removeIf(notification -> now > notification.expiresAt);
+        if (pickupNotifications.isEmpty()) {
             return;
         }
 
-        Label message = new Label(pickupMessage);
-        message.setAlignment(Pos.CENTER);
-        message.setPrefWidth(360);
-        message.setLayoutX(Constants.ROOM_WIDTH / 2.0 - 180);
-        message.setLayoutY(54);
-        message.getStyleClass().add("pickup-message");
-        gamePane.getChildren().add(message);
+        double y = 54;
+        for (PickupNotification notification : pickupNotifications) {
+            Label message = new Label(notification.message);
+            double messageWidth = "success-message".equals(notification.styleClass) ? 640 : 360;
+            message.setWrapText(true);
+            message.setAlignment(Pos.CENTER);
+            message.setPrefWidth(messageWidth);
+            message.setMaxWidth(messageWidth);
+            message.setMinHeight(Region.USE_PREF_SIZE);
+            message.setLayoutX(Constants.ROOM_WIDTH / 2.0 - messageWidth / 2.0);
+            message.setLayoutY(y);
+            message.getStyleClass().add(notification.styleClass);
+            gamePane.getChildren().add(message);
+            y += notificationHeight(notification) + 10;
+        }
+    }
+
+    private HBox createBugHud() {
+        HBox bugs = new HBox(10);
+        bugs.setPrefWidth(Constants.ROOM_WIDTH);
+        bugs.setMaxWidth(Constants.ROOM_WIDTH);
+        bugs.setMinHeight(46);
+        bugs.setAlignment(Pos.CENTER_LEFT);
+        bugs.getStyleClass().add("bug-hud");
+        refreshBugHud(bugs);
+        return bugs;
+    }
+
+    private void refreshBugHud() {
+        if (bugHud != null) {
+            refreshBugHud(bugHud);
+        }
+    }
+
+    private void refreshBugHud(HBox bugs) {
+        bugs.getChildren().clear();
+
+        for (int i = 0; i < 3; i++) {
+            StackPane bugSlot = new StackPane();
+            bugSlot.setPrefSize(52, 46);
+            bugSlot.getStyleClass().add("life-slot");
+            if (i < gameState.getBugCount()) {
+                bugSlot.getStyleClass().add("bug-life-slot");
+                bugSlot.getChildren().add(createBugLifeIcon());
+            } else {
+                bugSlot.getChildren().add(createJavaLifeIcon());
+            }
+            bugs.getChildren().add(bugSlot);
+        }
+    }
+
+    private Node createJavaLifeIcon() {
+        ImageView icon = new ImageView(getJavaLifeImage());
+        icon.setFitWidth(38);
+        icon.setFitHeight(40);
+        icon.setPreserveRatio(true);
+        icon.setSmooth(false);
+        return icon;
+    }
+
+    private Image getJavaLifeImage() {
+        if (javaLifeImage == null) {
+            javaLifeImage = new Image(Objects.requireNonNull(
+                    getClass().getResource(JAVA_LIFE_IMAGE_PATH),
+                    "Missing Java life image: " + JAVA_LIFE_IMAGE_PATH
+            ).toExternalForm());
+        }
+        return javaLifeImage;
+    }
+
+    private Node createBugLifeIcon() {
+        ImageView icon = new ImageView(getBugLifeImage());
+        icon.setFitWidth(34);
+        icon.setFitHeight(34);
+        icon.setPreserveRatio(true);
+        icon.setSmooth(false);
+        return icon;
+    }
+
+    private Image getBugLifeImage() {
+        if (bugLifeImage == null) {
+            bugLifeImage = new Image(Objects.requireNonNull(
+                    getClass().getResource(BUG_LIFE_IMAGE_PATH),
+                    "Missing bug life image: " + BUG_LIFE_IMAGE_PATH
+            ).toExternalForm());
+        }
+        return bugLifeImage;
     }
 
     private void addPlayer() {
@@ -430,6 +632,21 @@ public class GameView {
         knob.setFill(Color.web("#f3d45a"));
 
         gamePane.getChildren().addAll(doorShape, knob);
+    }
+
+    private void addChallengeDoor() {
+        Room room = gameState.getCurrentLevel().getRoom();
+        Door challengeDoor = room.getChallengeDoor();
+        if (challengeDoor == null) {
+            return;
+        }
+
+        Rectangle doorShape = new Rectangle(challengeDoor.getWidth(), challengeDoor.getHeight());
+        doorShape.setLayoutX(challengeDoor.getX());
+        doorShape.setLayoutY(challengeDoor.getY());
+        doorShape.getStyleClass().add(challengeDoor.isLocked() ? "challenge-door-locked" : "challenge-door-open");
+
+        gamePane.getChildren().add(doorShape);
     }
 
     private void addTerminal() {
@@ -499,6 +716,7 @@ public class GameView {
                 gameState.getCurrentLevel().getRoom().getDoor()
         )) {
             gameState.getCurrentLevel().complete();
+            gameState.rewardCleanLevel();
             stopMovementLoop();
             app.showLevelComplete();
         }
@@ -510,10 +728,26 @@ public class GameView {
         }
     }
 
+    private void restartAfterBugFailure() {
+        stopMovementLoop();
+        PauseTransition restartDelay = new PauseTransition(Duration.seconds(1.4));
+        restartDelay.setOnFinished(event -> app.startNewGame());
+        restartDelay.play();
+    }
+
+    private void recordMistake() {
+        gameState.addBug();
+        setPickupMessage("OH NO! A BUG!", "bug-message");
+        renderRoom();
+        if (gameState.hasTooManyBugs()) {
+            restartAfterBugFailure();
+        }
+    }
+
     private void maybeOpenTerminal() {
         Player player = gameState.getPlayer();
         boolean touchingTerminal = player.intersects(terminalX(), terminalY(), TERMINAL_WIDTH, TERMINAL_HEIGHT);
-        if (touchingTerminal && !wasTouchingTerminal) {
+        if (touchingTerminal && (!wasTouchingTerminal || activeModalType == ModalType.GOAL)) {
             openCodeBuilder();
         }
         wasTouchingTerminal = touchingTerminal;
@@ -536,13 +770,25 @@ public class GameView {
         return !room.hasHiddenHelper() || room.isHelperFound();
     }
 
+    private void refreshActiveModal() {
+        if (activeModalType == ModalType.TERMINAL && activeCodeBuilderView != null) {
+            activeCodeBuilderView.refresh(gameState.getCurrentLevel().getRoom().isGoalFound());
+            return;
+        }
+
+        if (activeModalType == ModalType.GOAL) {
+            closeModal();
+            showGoalWindow();
+        }
+    }
+
     private void showPickupMessage(Token token) {
         if (token.isCodeToken()) {
             return;
         }
 
         String label = token.getType() == TokenType.GOAL ? "Found: Goal" : "Found: Helper";
-        setPickupMessage(label);
+        setPickupMessage(label, "pickup-message");
     }
 
     private void showPickupMessage(ChestReward reward) {
@@ -551,11 +797,63 @@ public class GameView {
             case GOAL -> "Found: Goal";
             case HELPER -> "Found: Helper";
         };
-        setPickupMessage(label);
+        setPickupMessage(label, "pickup-message");
     }
 
-    private void setPickupMessage(String message) {
-        pickupMessage = message;
-        pickupMessageExpiresAt = System.nanoTime() + PICKUP_MESSAGE_DURATION_NANOS;
+    private String doorRewardMessage(ChestReward reward) {
+        return switch (reward.getType()) {
+            case CODE -> "Collected token '" + reward.getValue() + "'";
+            case GOAL -> "Found: Goal";
+            case HELPER -> "Found: Helper";
+        };
+    }
+
+    private void setPickupMessage(String message, String styleClass) {
+        if (message == null || message.isBlank()) {
+            return;
+        }
+
+        long now = System.nanoTime();
+        pickupNotifications.removeIf(notification -> now > notification.expiresAt);
+        long expiresAt = now
+                + PICKUP_MESSAGE_DURATION_NANOS
+                + (pickupNotifications.size() * NOTIFICATION_STACK_STEP_NANOS);
+
+        pickupNotifications.add(new PickupNotification(message, styleClass, expiresAt));
+        scheduleNotificationRefresh(expiresAt);
+    }
+
+    private double notificationHeight(PickupNotification notification) {
+        if ("bug-message".equals(notification.styleClass)) {
+            return 64;
+        }
+        if ("success-message".equals(notification.styleClass)) {
+            return 56;
+        }
+        return 48;
+    }
+
+    private void scheduleNotificationRefresh(long expiresAt) {
+        long refreshAt = expiresAt + NOTIFICATION_REFRESH_GRACE_NANOS;
+        double delaySeconds = Math.max(0.05, (refreshAt - System.nanoTime()) / 1_000_000_000.0);
+        PauseTransition refresh = new PauseTransition(Duration.seconds(delaySeconds));
+        refresh.setOnFinished(event -> {
+            pickupNotifications.removeIf(notification -> System.nanoTime() > notification.expiresAt);
+            renderRoom();
+            refreshActiveModal();
+        });
+        refresh.play();
+    }
+
+    private static class PickupNotification {
+        private final String message;
+        private final String styleClass;
+        private final long expiresAt;
+
+        private PickupNotification(String message, String styleClass, long expiresAt) {
+            this.message = message;
+            this.styleClass = styleClass;
+            this.expiresAt = expiresAt;
+        }
     }
 }

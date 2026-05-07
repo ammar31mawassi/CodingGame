@@ -13,6 +13,8 @@ public class Room {
     private final List<ChestReward> chestRewards;
     private final ChestReward finalChestReward;
     private final Door door;
+    private final Door challengeDoor;
+    private final MultipleChoiceQuestion challengeQuestion;
     private final Puzzle puzzle;
     private final boolean hasHiddenGoal;
     private final boolean hasHiddenHelper;
@@ -20,7 +22,7 @@ public class Room {
     private boolean helperFound;
 
     public Room(int width, int height, List<Token> tokens, Door door, Puzzle puzzle) {
-        this(width, height, tokens, List.of(), List.of(), List.of(), null, door, puzzle);
+        this(width, height, tokens, List.of(), List.of(), List.of(), null, door, null, null, puzzle);
     }
 
     public Room(
@@ -34,6 +36,22 @@ public class Room {
             Door door,
             Puzzle puzzle
     ) {
+        this(width, height, tokens, walls, chests, chestRewards, finalChestReward, door, null, null, puzzle);
+    }
+
+    public Room(
+            int width,
+            int height,
+            List<Token> tokens,
+            List<Wall> walls,
+            List<Chest> chests,
+            List<ChestReward> chestRewards,
+            ChestReward finalChestReward,
+            Door door,
+            Door challengeDoor,
+            MultipleChoiceQuestion challengeQuestion,
+            Puzzle puzzle
+    ) {
         this.width = width;
         this.height = height;
         this.tokens = new ArrayList<>(tokens);
@@ -42,6 +60,8 @@ public class Room {
         this.chestRewards = new ArrayList<>(chestRewards);
         this.finalChestReward = finalChestReward;
         this.door = door;
+        this.challengeDoor = challengeDoor;
+        this.challengeQuestion = challengeQuestion;
         this.puzzle = puzzle;
         this.hasHiddenGoal = hasRewardType(TokenType.GOAL);
         this.hasHiddenHelper = hasRewardType(TokenType.HELPER);
@@ -69,6 +89,18 @@ public class Room {
 
     public Door getDoor() {
         return door;
+    }
+
+    public Door getChallengeDoor() {
+        return challengeDoor;
+    }
+
+    public MultipleChoiceQuestion getChallengeQuestion() {
+        return challengeQuestion;
+    }
+
+    public boolean hasChallengeDoor() {
+        return challengeDoor != null && challengeQuestion != null;
     }
 
     public Puzzle getPuzzle() {
@@ -122,6 +154,12 @@ public class Room {
             goalFound = true;
         } else if (type == TokenType.HELPER) {
             helperFound = true;
+        }
+    }
+
+    public void collectReward(ChestReward reward, Inventory inventory) {
+        if (reward != null) {
+            collectReward(reward.getValue(), reward.getType(), inventory);
         }
     }
 

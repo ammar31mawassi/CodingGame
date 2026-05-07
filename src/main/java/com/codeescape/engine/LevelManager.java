@@ -4,12 +4,14 @@ import com.codeescape.model.Door;
 import com.codeescape.model.Chest;
 import com.codeescape.model.ChestReward;
 import com.codeescape.model.Level;
+import com.codeescape.model.MultipleChoiceQuestion;
 import com.codeescape.model.Puzzle;
 import com.codeescape.model.Room;
 import com.codeescape.model.Token;
 import com.codeescape.model.TokenType;
 import com.codeescape.model.Wall;
 import com.codeescape.util.Constants;
+import com.codeescape.validation.IfElsePrintValidator;
 import com.codeescape.validation.IfStatementValidator;
 import com.codeescape.validation.StringDeclarationValidator;
 import com.codeescape.validation.VariableDeclarationValidator;
@@ -29,10 +31,15 @@ public class LevelManager {
         levels.add(createStringDeclarationLevel());
         levels.add(createIfStatementLevel());
         levels.add(createVariableThenIfLevel());
+        levels.add(createQuestionRoomLevel());
     }
 
     public Level getCurrentLevel() {
         return levels.get(currentLevelIndex);
+    }
+
+    public List<Level> getLevels() {
+        return List.copyOf(levels);
     }
 
     public boolean hasNextLevel() {
@@ -51,6 +58,17 @@ public class LevelManager {
                 .filter(level -> level.getLevelNumber() == levelNumber)
                 .findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("Unknown level: " + levelNumber));
+    }
+
+    public Level goToLevel(int levelNumber) {
+        for (int i = 0; i < levels.size(); i++) {
+            if (levels.get(i).getLevelNumber() == levelNumber) {
+                currentLevelIndex = i;
+                return getCurrentLevel();
+            }
+        }
+
+        throw new IllegalArgumentException("Unknown level: " + levelNumber);
     }
 
     private Level createVariableLevel() {
@@ -134,7 +152,7 @@ public class LevelManager {
     private Level createVariableThenIfLevel() {
         Puzzle puzzle = new Puzzle(
                 "Variable and If",
-                "Declare a variable named x and then make a true if-statement.",
+                "Declare a variable named x and then make a true if-statement using x.",
                 List.of("variables", "conditions", "if-statements"),
                 new VariableThenIfValidator()
         );
@@ -156,7 +174,39 @@ public class LevelManager {
                 "Logic Lock",
                 "Variables and if-statements",
                 "",
-                "Hint: The solution uses two lines. Declare x first, then test x with an if-statement.",
+                "Hint: The solution uses two lines. Declare x first, then use x in an if condition that evaluates to true.",
+                room
+        );
+    }
+
+    private Level createQuestionRoomLevel() {
+        Puzzle puzzle = new Puzzle(
+                "If Else",
+                "Create an if-else statement: if grade is higher than 56, print \"passed\". Otherwise, print \"failed\".",
+                List.of("if-else", "variables", "print statements"),
+                new IfElsePrintValidator()
+        );
+
+        Room room = new Room(
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
+                List.of(),
+                levelFiveWalls(),
+                levelFiveChests(),
+                shuffledLevelFiveRewards(),
+                ChestReward.helper(),
+                createExitDoor(),
+                levelFiveChallengeDoor(),
+                levelFiveQuestion(),
+                puzzle
+        );
+
+        return new Level(
+                5,
+                "Question Room",
+                "If-else statements",
+                "",
+                "Hint: The room question gave you x = 56.0. Use x in the condition instead of the number 56.",
                 room
         );
     }
@@ -229,6 +279,91 @@ public class LevelManager {
                 new Wall(500, 245, 180, 14),
                 new Wall(670, 430, 180, 14),
                 new Wall(840, 280, 170, 14)
+        );
+    }
+
+    private List<ChestReward> shuffledLevelFiveRewards() {
+        List<ChestReward> rewards = new ArrayList<>();
+        for (String value : List.of(
+                "if", "(", "grade", ">", ")", "{",
+                "System.out.println", "(", "\"passed\"", ")", ";", "}",
+                "else", "{", "System.out.println", "(", "\"failed\"", ")", ";", "}",
+                "<", "=="
+        )) {
+            rewards.add(ChestReward.code(value));
+        }
+        rewards.add(ChestReward.goal());
+        Collections.shuffle(rewards);
+        return rewards;
+    }
+
+    private List<Chest> levelFiveChests() {
+        return List.of(
+                new Chest(250, 74, 46, 34),
+                new Chest(430, 82, 46, 34),
+                new Chest(600, 78, 46, 34),
+                new Chest(790, 82, 46, 34),
+                new Chest(1000, 78, 46, 34),
+                new Chest(252, 175, 46, 34),
+                new Chest(460, 175, 46, 34),
+                new Chest(600, 175, 46, 34),
+                new Chest(1000, 175, 46, 34),
+                new Chest(230, 282, 46, 34),
+                new Chest(600, 282, 46, 34),
+                new Chest(760, 282, 46, 34),
+                new Chest(960, 282, 46, 34),
+                new Chest(455, 520, 46, 34),
+                new Chest(610, 520, 46, 34),
+                new Chest(740, 520, 46, 34),
+                new Chest(980, 520, 46, 34),
+                new Chest(1100, 520, 46, 34),
+                new Chest(960, 330, 46, 34),
+                new Chest(1110, 160, 46, 34),
+                new Chest(130, 390, 46, 34),
+                new Chest(230, 440, 46, 34),
+                new Chest(315, 390, 46, 34),
+                new Chest(190, 520, 46, 34)
+        );
+    }
+
+    private List<Wall> levelFiveWalls() {
+        List<Wall> walls = new ArrayList<>();
+        walls.addAll(List.of(
+                new Wall(150, 36, 14, 220),
+                new Wall(150, 250, 210, 14),
+                new Wall(520, 36, 14, 210),
+                new Wall(520, 300, 14, 210),
+                new Wall(700, 120, 220, 14),
+                new Wall(700, 120, 14, 280),
+                new Wall(920, 120, 14, 190),
+                new Wall(830, 390, 220, 14),
+                new Wall(1050, 220, 14, 300)
+        ));
+        walls.addAll(levelFiveRoomWalls());
+        return walls;
+    }
+
+    private List<Wall> levelFiveRoomWalls() {
+        return List.of(
+                new Wall(80, 330, 130, 14),
+                new Wall(290, 330, 104, 14),
+                new Wall(80, 330, 14, 254),
+                new Wall(380, 330, 14, 254),
+                new Wall(80, 570, 314, 14)
+        );
+    }
+
+    private Door levelFiveChallengeDoor() {
+        return new Door(210, 330, 80, 14);
+    }
+
+    private MultipleChoiceQuestion levelFiveQuestion() {
+        return new MultipleChoiceQuestion(
+                "Fill in the blank in this code:",
+                "_____ x = 56.0;",
+                List.of("double", "int", "String", "boolean"),
+                "double",
+                ChestReward.code("x")
         );
     }
 

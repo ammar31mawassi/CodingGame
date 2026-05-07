@@ -5,7 +5,10 @@ import java.util.HashMap;
 import java.util.Set;
 
 public class VariableDeclarationValidator implements CodeValidator {
-    private static HashMap<String,String> variables;
+    private record VariableData(String type, String value) {
+    }
+
+    private static HashMap<String, VariableData> variables;
     private static volatile VariableDeclarationValidator instance;
     private static final Set<String> VALID_TYPES = Set.of("int", "double", "char", "String", "boolean");
     private static final Set<String> INVALID_WORDS = Set.of(
@@ -27,7 +30,14 @@ public class VariableDeclarationValidator implements CodeValidator {
         return instance;
     }
     public static String checkNameOfVariable(String variableName) {
-        return variables.getOrDefault(variableName, "Does not exist");
+        getInstance();
+        VariableData variableData = variables.get(variableName);
+        return variableData == null ? "Does not exist" : variableData.type();
+    }
+    public static String checkValueOfVariable(String variableName) {
+        getInstance();
+        VariableData variableData = variables.get(variableName);
+        return variableData == null ? "Does not exist" : variableData.value();
     }
     public ValidationResult validate(String line){
         return validateDeclaration(line, true);
@@ -61,23 +71,23 @@ public class VariableDeclarationValidator implements CodeValidator {
         switch(words[0]){
             case "int":
                 if(!validateInteger(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "int", rememberVariable);
+                rememberVariable(words[1], "int", words[3], rememberVariable);
                 return ValidationResult.success("Successful Integer Declaration");
             case "double":
                 if(!validateDouble(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "double", rememberVariable);
+                rememberVariable(words[1], "double", words[3], rememberVariable);
                 return ValidationResult.success("Successful Double Declaration");
             case "char":
                 if(!validateChar(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "char", rememberVariable);
+                rememberVariable(words[1], "char", words[3], rememberVariable);
                 return ValidationResult.success("Successful Char Declaration");
             case "String":
                 if(!validateString(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "String", rememberVariable);
+                rememberVariable(words[1], "String", words[3], rememberVariable);
                 return ValidationResult.success("Successful String Declaration");
             case "boolean":
                 if(!validateBoolean(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "boolean", rememberVariable);
+                rememberVariable(words[1], "boolean", words[3], rememberVariable);
                 return ValidationResult.success("Successful Boolean Declaration");
             default:
                 return ValidationResult.failure("Not a valid TYPE in line: " + line);
@@ -120,9 +130,9 @@ public class VariableDeclarationValidator implements CodeValidator {
 
         return ValidationResult.success("Successful Field Declaration");
     }
-    private void rememberVariable(String name, String type, boolean rememberVariable) {
+    private void rememberVariable(String name, String type, String value, boolean rememberVariable) {
         if(rememberVariable){
-            variables.putIfAbsent(name, type);
+            variables.putIfAbsent(name, new VariableData(type, value));
         }
     }
     private boolean validateInteger(String value){
@@ -165,6 +175,7 @@ public class VariableDeclarationValidator implements CodeValidator {
         return value.equals("true") || value.equals("false");
     }
     public static void resetVariables() {
+        getInstance();
         variables.clear();
     }
 }

@@ -3,15 +3,16 @@ package com.codeescape.validation;
 import java.util.regex.Pattern;
 
 public class VariableThenIfValidator implements CodeValidator {
-    private static final Pattern REQUIRED_DECLARATION = Pattern.compile("^int\\s+x\\s*=\\s*5\\s*;$");
-    private static final Pattern REQUIRED_TRUE_IF = Pattern.compile("^if\\s*\\(\\s*x\\s*>\\s*3\\s*\\)\\s*\\{\\s*}$");
+    private static final Pattern REQUIRED_DECLARATION = Pattern.compile("^int\\s+x\\s*=\\s*-?\\d+\\s*;$");
 
     private final VariableDeclarationValidator variableDeclarationValidator;
     private final IfStatementValidator ifStatementValidator;
+    private final ConditionEvaluator conditionEvaluator;
 
     public VariableThenIfValidator() {
         variableDeclarationValidator = VariableDeclarationValidator.getInstance();
         ifStatementValidator = new IfStatementValidator();
+        conditionEvaluator = new ConditionEvaluator();
     }
 
     @Override
@@ -35,7 +36,7 @@ public class VariableThenIfValidator implements CodeValidator {
         }
 
         if (!REQUIRED_DECLARATION.matcher(declaration).matches()) {
-            return ValidationResult.failure("Declare int x = 5; first.");
+            return ValidationResult.failure("Declare int x first.");
         }
 
         ValidationResult declarationResult = variableDeclarationValidator.validate(declaration);
@@ -43,13 +44,19 @@ public class VariableThenIfValidator implements CodeValidator {
             return declarationResult;
         }
 
-        if (!REQUIRED_TRUE_IF.matcher(ifStatement).matches()) {
-            return ValidationResult.failure("Use a true if-statement with x > 3.");
-        }
-
         ValidationResult ifResult = ifStatementValidator.validate(ifStatement);
         if (!ifResult.isValid()) {
             return ifResult;
+        }
+
+        String condition = conditionEvaluator.extractCondition(ifStatement);
+        if (!conditionEvaluator.usesVariable(condition, "x")) {
+            return ValidationResult.failure("The if-statement must use x.");
+        }
+
+        ValidationResult conditionResult = conditionEvaluator.evaluateCondition(condition);
+        if (!conditionResult.isValid()) {
+            return ValidationResult.failure("The if-statement must be true.");
         }
 
         return ValidationResult.success("Correct two-line solution.");

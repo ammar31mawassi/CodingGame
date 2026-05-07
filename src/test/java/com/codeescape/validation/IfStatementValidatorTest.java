@@ -34,6 +34,12 @@ class IfStatementValidatorTest {
     }
 
     @Test
+    void acceptsBooleanLiteralAsCondition() {
+        assertTrue(validator.validate("if (true) {}").isValid());
+        assertTrue(validator.validate("if ( true ) { }").isValid());
+    }
+
+    @Test
     void acceptsTokenBuilderSpacing() {
         assertTrue(validator.validate("if ( x > 5 ) { }").isValid());
         assertTrue(validator.validate("if ( age >= 18 ) { }").isValid());

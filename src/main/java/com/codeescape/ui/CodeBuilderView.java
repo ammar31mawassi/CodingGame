@@ -6,18 +6,22 @@ import com.codeescape.validation.ValidationResult;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.layout.FlowPane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 public class CodeBuilderView {
     private final Inventory inventory;
     private final Puzzle puzzle;
-    private final Runnable onSolved;
+    private final Consumer<ValidationResult> onSolved;
+    private final Consumer<ValidationResult> onFailed;
     private final List<String> selectedTokens = new ArrayList<>();
     private final List<Integer> selectedTokenIndexes = new ArrayList<>();
     private final List<Button> availableTokenButtons = new ArrayList<>();
@@ -25,34 +29,62 @@ public class CodeBuilderView {
     private final FlowPane availableTokenBox = new FlowPane(8, 8);
     private final Label answerPreviewLabel = new Label();
     private final Label feedbackLabel = new Label();
+    private Label titleLabel;
+    private Label instructionsLabel;
     private final Button removeLastButton = new Button("Remove Last");
     private final Button clearButton = new Button("Clear");
     private final Button submitButton = new Button("Submit");
+    private boolean showGoal;
     private boolean solved;
 
     public CodeBuilderView(Inventory inventory, Puzzle puzzle) {
-        this(inventory, puzzle, () -> {
+        this(inventory, puzzle, true, result -> {
+        }, result -> {
         });
     }
 
     public CodeBuilderView(Inventory inventory, Puzzle puzzle, Runnable onSolved) {
+        this(inventory, puzzle, true, result -> onSolved.run(), result -> {
+        });
+    }
+
+    public CodeBuilderView(Inventory inventory, Puzzle puzzle, boolean showGoal, Consumer<ValidationResult> onSolved) {
+        this(inventory, puzzle, showGoal, onSolved, result -> {
+        });
+    }
+
+    public CodeBuilderView(
+            Inventory inventory,
+            Puzzle puzzle,
+            boolean showGoal,
+            Consumer<ValidationResult> onSolved,
+            Consumer<ValidationResult> onFailed
+    ) {
         this.inventory = inventory;
         this.puzzle = puzzle;
+        this.showGoal = showGoal;
         this.onSolved = onSolved;
+        this.onFailed = onFailed;
     }
 
     public Parent createView() {
-        Label title = new Label(puzzle.getTitle());
-        title.getStyleClass().add("puzzle-title");
-        Label instructions = new Label(puzzle.getInstructions());
-        instructions.setWrapText(true);
-        instructions.getStyleClass().add("puzzle-copy");
+        titleLabel = new Label();
+        titleLabel.getStyleClass().add("puzzle-title");
+        instructionsLabel = new Label();
+        instructionsLabel.setWrapText(true);
+        instructionsLabel.getStyleClass().add("puzzle-copy");
+        refreshGoalText();
 
         removeLastButton.setOnAction(event -> removeLastToken());
         clearButton.setOnAction(event -> clearAnswer());
         submitButton.setOnAction(event -> submitAnswer());
 
         answerPreviewLabel.setWrapText(true);
+        answerPreviewLabel.setMaxWidth(Double.MAX_VALUE);
+        answerPreviewLabel.setPrefHeight(Region.USE_COMPUTED_SIZE);
+        answerPreviewLabel.setMaxHeight(Double.MAX_VALUE);
+        answerPreviewLabel.setMinHeight(Region.USE_PREF_SIZE);
+        answerPreviewLabel.setTextOverrun(OverrunStyle.CLIP);
         answerPreviewLabel.getStyleClass().add("answer-preview");
         feedbackLabel.getStyleClass().add("feedback-label");
         removeLastButton.getStyleClass().add("pixel-button");
@@ -74,8 +106,8 @@ public class CodeBuilderView {
 
         VBox root = new VBox(
                 12,
-                title,
-                instructions,
+                titleLabel,
+                instructionsLabel,
                 new Separator(),
                 answerLabel,
                 answerPreviewLabel,
@@ -89,6 +121,14 @@ public class CodeBuilderView {
         root.setPrefWidth(720);
         root.setMaxWidth(720);
         return root;
+    }
+
+    public void refresh(boolean showGoal) {
+        this.showGoal = showGoal;
+        refreshGoalText();
+        refreshSelectedTokens();
+        refreshAvailableTokens();
+        updateControls();
     }
 
     private void addTokenToAnswer(int tokenIndex, String token) {
@@ -174,14 +214,25 @@ public class CodeBuilderView {
         showFeedback(result);
         if (result.isValid()) {
             solved = true;
-            onSolved.run();
+            onSolved.accept(result);
             updateControls();
             refreshAvailableTokens();
+        } else {
+            onFailed.accept(result);
         }
     }
 
     private void showFeedback(ValidationResult result) {
         feedbackLabel.setText(result.getMessage());
+    }
+
+    private void refreshGoalText() {
+        if (titleLabel == null || instructionsLabel == null) {
+            return;
+        }
+
+        titleLabel.setText(showGoal ? puzzle.getTitle() : "Terminal");
+        instructionsLabel.setText(showGoal ? puzzle.getInstructions() : "Goal not found yet.");
     }
 
     private void refreshSelectedTokens() {

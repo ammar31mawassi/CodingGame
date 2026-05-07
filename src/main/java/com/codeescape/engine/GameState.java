@@ -10,6 +10,8 @@ public class GameState {
     private Player player;
     private Inventory inventory;
     private Level currentLevel;
+    private int bugCount;
+    private boolean currentLevelHadMistake;
     private boolean gameFinished;
 
     public GameState() {
@@ -37,8 +39,28 @@ public class GameState {
         currentLevel = level;
         player = createDefaultPlayer();
         inventory = new Inventory();
+        currentLevelHadMistake = false;
         VariableDeclarationValidator.getInstance();
         VariableDeclarationValidator.resetVariables();
+    }
+
+    public int getBugCount() {
+        return bugCount;
+    }
+
+    public void addBug() {
+        currentLevelHadMistake = true;
+        bugCount = Math.min(3, bugCount + 1);
+    }
+
+    public boolean hasTooManyBugs() {
+        return bugCount >= 3;
+    }
+
+    public void rewardCleanLevel() {
+        if (!currentLevelHadMistake && bugCount > 0) {
+            bugCount--;
+        }
     }
 
     public boolean isGameFinished() {
