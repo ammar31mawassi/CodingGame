@@ -11,6 +11,7 @@ import com.codeescape.model.MultipleChoiceQuestion;
 import com.codeescape.model.Player;
 import com.codeescape.model.Room;
 import com.codeescape.model.Token;
+import com.codeescape.model.TokenDescriptions;
 import com.codeescape.model.TokenType;
 import com.codeescape.model.Wall;
 import com.codeescape.util.Constants;
@@ -18,6 +19,7 @@ import javafx.animation.PauseTransition;
 import javafx.application.Platform;
 import javafx.animation.AnimationTimer;
 import javafx.util.Duration;
+import javafx.beans.binding.Bindings;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Node;
@@ -29,6 +31,7 @@ import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.StackPane;
@@ -37,6 +40,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -46,16 +50,36 @@ import java.util.Set;
 public class GameView {
     private static final double TERMINAL_WIDTH = 112;
     private static final double TERMINAL_HEIGHT = 44;
+    private static final double TERMINAL_MARGIN_RIGHT = 24;
+    private static final double TERMINAL_MARGIN_BOTTOM = 26;
+    private static final double INVENTORY_WIDTH = 224;
+    private static final double INVENTORY_HEIGHT = 54;
+    private static final double INVENTORY_MARGIN_BOTTOM = 6;
+    private static final double BOTTOM_CONTROL_MARGIN = 86;
+    private static final double GOAL_MARGIN_LEFT = 42;
+    private static final double GOAL_MARGIN_BOTTOM = 8;
+    private static final double HARD_MODE_LIGHT_RADIUS = 165;
+    private static final double BUG_HUD_HEIGHT = 46;
+    private static final double GAME_SURFACE_TOP_PADDING = 12;
+    private static final double GAME_SURFACE_HUD_GAP = 10;
+    private static final double GAME_SURFACE_WIDTH = Constants.ROOM_WIDTH;
+    private static final double GAME_SURFACE_HEIGHT = Constants.ROOM_HEIGHT
+            + BUG_HUD_HEIGHT
+            + GAME_SURFACE_TOP_PADDING
+            + GAME_SURFACE_HUD_GAP;
+    private static final double FULLSCREEN_MARGIN = 14;
     private static final long PICKUP_MESSAGE_DURATION_NANOS = 2_000_000_000L;
     private static final long NOTIFICATION_STACK_STEP_NANOS = 650_000_000L;
     private static final long NOTIFICATION_REFRESH_GRACE_NANOS = 50_000_000L;
+    private static final double ADVICE_TOAST_SECONDS = 7.0;
     private static final String JAVA_LIFE_IMAGE_PATH = "/images/java-14-logo-png-transparent.png";
     private static final String BUG_LIFE_IMAGE_PATH = "/images/bug-icon.png";
 
     private enum ModalType {
         GOAL,
         TERMINAL,
-        CHALLENGE
+        CHALLENGE,
+        TUTORIAL
     }
 
     private final GameApp app;
@@ -65,7 +89,12 @@ public class GameView {
     private final Set<KeyCode> pressedKeys = new HashSet<>();
     private final List<PickupNotification> pickupNotifications = new ArrayList<>();
     private StackPane root;
+    private StackPane gameSurface;
     private HBox bugHud;
+    private Label inventoryButtonLabel;
+    private VBox adviceToastLayer;
+    private Parent inventoryPanel;
+    private Label inventoryDescriptionLabel;
     private Parent activeModal;
     private ModalType activeModalType;
     private CodeBuilderView activeCodeBuilderView;
@@ -85,20 +114,48 @@ public class GameView {
         renderRoom();
 
         Button goalButton = createGoalButton();
-        VBox gameLayout = new VBox(10, bugHud, gamePane);
-        gameLayout.setAlignment(Pos.CENTER);
-        gameLayout.getStyleClass().add("game-layout");
+        adviceToastLayer = createAdviceToastLayer();
+        VBox playfield = new VBox(GAME_SURFACE_HUD_GAP, bugHud, gamePane);
+        playfield.setPadding(new Insets(GAME_SURFACE_TOP_PADDING, 0, 0, 0));
+        playfield.setAlignment(Pos.TOP_LEFT);
+        playfield.setMinSize(GAME_SURFACE_WIDTH, GAME_SURFACE_HEIGHT);
+        playfield.setPrefSize(GAME_SURFACE_WIDTH, GAME_SURFACE_HEIGHT);
+        playfield.setMaxSize(GAME_SURFACE_WIDTH, GAME_SURFACE_HEIGHT);
 
-        root = new StackPane(gameLayout, goalButton);
+        gameSurface = new StackPane(playfield);
+        gameSurface.setMinSize(GAME_SURFACE_WIDTH, GAME_SURFACE_HEIGHT);
+        gameSurface.setPrefSize(GAME_SURFACE_WIDTH, GAME_SURFACE_HEIGHT);
+        gameSurface.setMaxSize(GAME_SURFACE_WIDTH, GAME_SURFACE_HEIGHT);
+
+        root = new StackPane(gameSurface, goalButton, adviceToastLayer);
         root.getStyleClass().add("game-screen");
-        root.setPadding(new Insets(24));
+        root.setPadding(new Insets(0));
         root.setFocusTraversable(true);
-        StackPane.setAlignment(goalButton, Pos.BOTTOM_RIGHT);
-        StackPane.setMargin(goalButton, new Insets(0, 34, 34, 0));
+        StackPane.setAlignment(goalButton, Pos.BOTTOM_LEFT);
+        StackPane.setMargin(goalButton, new Insets(0, 0, GOAL_MARGIN_BOTTOM, GOAL_MARGIN_LEFT));
+        StackPane.setAlignment(adviceToastLayer, Pos.TOP_RIGHT);
+        StackPane.setMargin(adviceToastLayer, new Insets(22, 22, 0, 0));
 
+        bindGameSurfaceScale();
         setupKeyboardControls(root);
         startMovementLoop();
+        showStartingOverlays();
         return root;
+    }
+
+    private void bindGameSurfaceScale() {
+        gameSurface.scaleXProperty().bind(Bindings.createDoubleBinding(
+                this::gameSurfaceScale,
+                root.widthProperty(),
+                root.heightProperty()
+        ));
+        gameSurface.scaleYProperty().bind(gameSurface.scaleXProperty());
+    }
+
+    private double gameSurfaceScale() {
+        double availableWidth = Math.max(GAME_SURFACE_WIDTH, root.getWidth() - FULLSCREEN_MARGIN * 2);
+        double availableHeight = Math.max(GAME_SURFACE_HEIGHT, root.getHeight() - FULLSCREEN_MARGIN * 2);
+        return Math.min(availableWidth / GAME_SURFACE_WIDTH, availableHeight / GAME_SURFACE_HEIGHT);
     }
 
     private void renderRoom() {
@@ -116,8 +173,11 @@ public class GameView {
         addChests();
         addTokens();
         addPlayer();
+        addHardModeDarkness();
+        addInventoryButton();
         addPickupMessage();
         refreshBugHud();
+        refreshInventoryButton();
     }
 
     private void setupKeyboardControls(Parent root) {
@@ -125,6 +185,19 @@ public class GameView {
             if (event.getCode() == KeyCode.ESCAPE && activeModal != null) {
                 closeModal();
                 event.consume();
+                return;
+            }
+            if (event.getCode() == KeyCode.ESCAPE && inventoryPanel != null) {
+                hideInventoryPanel();
+                event.consume();
+                return;
+            }
+            if (event.getCode() == KeyCode.ENTER && activeModal == null) {
+                openCodeBuilder();
+                event.consume();
+                return;
+            }
+            if (activeModal != null) {
                 return;
             }
 
@@ -136,13 +209,20 @@ public class GameView {
         });
 
         root.addEventFilter(KeyEvent.KEY_RELEASED, event -> {
+            if (activeModal != null) {
+                return;
+            }
             if (isMovementKey(event.getCode())) {
                 pressedKeys.remove(event.getCode());
                 event.consume();
             }
         });
 
-        root.setOnMouseClicked(event -> root.requestFocus());
+        root.setOnMouseClicked(event -> {
+            if (activeModal == null) {
+                root.requestFocus();
+            }
+        });
         Platform.runLater(root::requestFocus);
     }
 
@@ -164,7 +244,7 @@ public class GameView {
     }
 
     private void updateMovement(double elapsedSeconds) {
-        if (pressedKeys.isEmpty()) {
+        if (isGameplayPaused() || pressedKeys.isEmpty()) {
             return;
         }
 
@@ -214,6 +294,10 @@ public class GameView {
         maybeOpenTerminal();
     }
 
+    private boolean isGameplayPaused() {
+        return activeModal != null;
+    }
+
     private boolean isMovementKey(KeyCode code) {
         return code == KeyCode.UP
                 || code == KeyCode.DOWN
@@ -245,6 +329,7 @@ public class GameView {
         }
 
         if (!collectedTokens.isEmpty() || reward != null) {
+            refreshInventoryPanel();
             refreshActiveModal();
         }
     }
@@ -319,6 +404,7 @@ public class GameView {
                 setPickupMessage(doorRewardMessage(reward), "pickup-message");
             }
             renderRoom();
+            refreshInventoryPanel();
             refreshActiveModal();
             return;
         }
@@ -350,6 +436,7 @@ public class GameView {
 
         Parent builder = activeCodeBuilderView.createView();
         showModal(builder, 920, 620, ModalType.TERMINAL);
+        wasTouchingTerminal = gameState.getPlayer().intersects(terminalX(), terminalY(), TERMINAL_WIDTH, TERMINAL_HEIGHT);
     }
 
     private void showGoalWindow() {
@@ -393,7 +480,102 @@ public class GameView {
         showModal(content, 720, 300, ModalType.GOAL);
     }
 
+    private void showStartingOverlays() {
+        if (gameState.hasSeenTutorial()) {
+            showLevelAdvice();
+            return;
+        }
+
+        maybeShowTutorial();
+    }
+
+    private void maybeShowTutorial() {
+        if (gameState.hasSeenTutorial()) {
+            return;
+        }
+
+        Platform.runLater(this::showTutorialWindow);
+    }
+
+    private void showTutorialWindow() {
+        if (activeModal != null || gameState.hasSeenTutorial()) {
+            return;
+        }
+
+        Label title = new Label("Tutorial");
+        title.getStyleClass().add("modal-title");
+
+        Label movement = tutorialLine("Move with W, A, S, D or the arrow keys.");
+        Label tokens = tutorialLine("Walk into tokens and chests to collect code pieces.");
+        Label terminal = tutorialLine("Open the terminal by pressing Enter or clicking the green terminal.");
+        Label goal = tutorialLine("Find the Goal, open it from the bottom-left button, then solve the terminal puzzle to unlock the door.");
+        Label inventory = tutorialLine("Use the bottom inventory button to inspect collected tokens.");
+
+        Button startButton = new Button("Start");
+        startButton.getStyleClass().add("pixel-button");
+        startButton.setOnAction(event -> closeModal());
+
+        VBox content = new VBox(12, title, movement, tokens, terminal, goal, inventory, startButton);
+        content.setMaxWidth(660);
+        showModal(content, 760, 520, ModalType.TUTORIAL);
+    }
+
+    private Label tutorialLine(String text) {
+        Label label = new Label(text);
+        label.getStyleClass().add("modal-copy");
+        label.setWrapText(true);
+        label.setPrefWidth(640);
+        label.setMaxWidth(640);
+        label.setMinHeight(Region.USE_PREF_SIZE);
+        return label;
+    }
+
+    private void showLevelAdvice() {
+        String advice = levelAdvice();
+        if (!advice.isBlank()) {
+            showAdviceToast("Achievement Get!", advice);
+        }
+        if (gameState.getGameMode().isHard()) {
+            showAdviceToast("Hard Mode", "Only nearby code is visible.");
+        }
+    }
+
+    private String levelAdvice() {
+        return switch (gameState.getCurrentLevel().getLevelNumber()) {
+            case 1 -> "New: collect code tokens and open the terminal.";
+            case 2 -> "New: find the hidden Goal before solving.";
+            case 3 -> "New: blue Helper tokens reveal extra hints.";
+            case 4 -> "New: maze chests hide the pieces you need.";
+            case 5 -> "New: question doors unlock extra room rewards.";
+            default -> "";
+        };
+    }
+
+    private void showAdviceToast(String titleText, String messageText) {
+        if (adviceToastLayer == null || messageText == null || messageText.isBlank()) {
+            return;
+        }
+
+        Label title = new Label(titleText);
+        title.getStyleClass().add("achievement-toast-title");
+
+        Label message = new Label(messageText);
+        message.setWrapText(true);
+        message.setMaxWidth(360);
+        message.getStyleClass().add("achievement-toast-copy");
+
+        VBox toast = new VBox(4, title, message);
+        toast.getStyleClass().add("achievement-toast");
+        adviceToastLayer.getChildren().add(toast);
+
+        PauseTransition hideDelay = new PauseTransition(Duration.seconds(ADVICE_TOAST_SECONDS));
+        hideDelay.setOnFinished(event -> adviceToastLayer.getChildren().remove(toast));
+        hideDelay.play();
+    }
+
     private void showModal(Parent content, double width, double height, ModalType modalType) {
+        hideInventoryPanel();
+        pressedKeys.clear();
         Button closeButton = new Button("X");
         closeButton.getStyleClass().add("close-button");
         closeButton.setOnAction(event -> closeModal());
@@ -406,6 +588,7 @@ public class GameView {
         modal.setMaxSize(width, height);
         modal.setPrefSize(width, height);
         modal.getStyleClass().add("map-modal");
+        modal.setFocusTraversable(true);
 
         activeModal = modal;
         activeModalType = modalType;
@@ -422,6 +605,10 @@ public class GameView {
             activeModalType = null;
             if (closingModalType == ModalType.TERMINAL) {
                 activeCodeBuilderView = null;
+            }
+            if (closingModalType == ModalType.TUTORIAL) {
+                gameState.markTutorialSeen();
+                showLevelAdvice();
             }
         }
         Platform.runLater(root::requestFocus);
@@ -519,9 +706,11 @@ public class GameView {
 
     private HBox createBugHud() {
         HBox bugs = new HBox(10);
-        bugs.setPrefWidth(Constants.ROOM_WIDTH);
-        bugs.setMaxWidth(Constants.ROOM_WIDTH);
-        bugs.setMinHeight(46);
+        bugs.setPrefWidth(180);
+        bugs.setMaxWidth(180);
+        bugs.setMinHeight(BUG_HUD_HEIGHT);
+        bugs.setPrefHeight(BUG_HUD_HEIGHT);
+        bugs.setMaxHeight(BUG_HUD_HEIGHT);
         bugs.setAlignment(Pos.CENTER_LEFT);
         bugs.getStyleClass().add("bug-hud");
         refreshBugHud(bugs);
@@ -540,6 +729,7 @@ public class GameView {
         for (int i = 0; i < 3; i++) {
             StackPane bugSlot = new StackPane();
             bugSlot.setPrefSize(52, 46);
+            bugSlot.setMaxSize(52, 46);
             bugSlot.getStyleClass().add("life-slot");
             if (i < gameState.getBugCount()) {
                 bugSlot.getStyleClass().add("bug-life-slot");
@@ -618,6 +808,26 @@ public class GameView {
         gamePane.getChildren().addAll(head, body, leftLeg, rightLeg);
     }
 
+    private void addHardModeDarkness() {
+        if (!gameState.getGameMode().isHard()) {
+            return;
+        }
+
+        Player player = gameState.getPlayer();
+        Rectangle darkness = new Rectangle(Constants.ROOM_WIDTH, Constants.ROOM_HEIGHT);
+        darkness.setFill(Color.rgb(0, 0, 0, 0.76));
+
+        Circle light = new Circle(
+                player.getX() + player.getWidth() / 2.0,
+                player.getY() + player.getHeight() / 2.0,
+                HARD_MODE_LIGHT_RADIUS
+        );
+        Shape overlay = Shape.subtract(darkness, light);
+        overlay.setMouseTransparent(true);
+        overlay.getStyleClass().add("hard-mode-darkness");
+        gamePane.getChildren().add(overlay);
+    }
+
     private void addDoor() {
         Door door = gameState.getCurrentLevel().getRoom().getDoor();
 
@@ -655,7 +865,10 @@ public class GameView {
         terminal.setLayoutY(terminalY());
         terminal.setPrefSize(TERMINAL_WIDTH, TERMINAL_HEIGHT);
         terminal.getStyleClass().add("terminal-tile");
-        terminal.setOnMouseClicked(event -> openCodeBuilder());
+        terminal.setOnMouseClicked(event -> {
+            openCodeBuilder();
+            event.consume();
+        });
 
         Label prompt = new Label("Terminal");
         prompt.getStyleClass().add("terminal-text");
@@ -670,6 +883,130 @@ public class GameView {
         button.getStyleClass().add("goal-icon-button");
         button.setOnAction(event -> showGoalWindow());
         return button;
+    }
+
+    private VBox createAdviceToastLayer() {
+        VBox layer = new VBox(8);
+        layer.setAlignment(Pos.TOP_RIGHT);
+        layer.setMouseTransparent(true);
+        layer.getStyleClass().add("achievement-toast-layer");
+        return layer;
+    }
+
+    private void addInventoryButton() {
+        double x = Constants.ROOM_WIDTH / 2.0 - INVENTORY_WIDTH / 2.0;
+        double y = Constants.ROOM_HEIGHT - INVENTORY_HEIGHT - INVENTORY_MARGIN_BOTTOM;
+
+        Rectangle shadow = new Rectangle(INVENTORY_WIDTH, 6);
+        shadow.setLayoutX(x);
+        shadow.setLayoutY(y + INVENTORY_HEIGHT);
+        shadow.setFill(Color.web("#5d3828"));
+        shadow.getStyleClass().add("inventory-toggle-shadow");
+        shadow.setMouseTransparent(true);
+
+        Rectangle background = new Rectangle(INVENTORY_WIDTH, INVENTORY_HEIGHT);
+        background.setLayoutX(x);
+        background.setLayoutY(y);
+        background.setFill(Color.web("#8a5a35"));
+        background.getStyleClass().add("inventory-toggle-shape");
+        background.setOnMouseClicked(event -> {
+            toggleInventoryPanel();
+            event.consume();
+        });
+
+        inventoryButtonLabel = new Label();
+        inventoryButtonLabel.setLayoutX(x);
+        inventoryButtonLabel.setLayoutY(y);
+        inventoryButtonLabel.setPrefSize(INVENTORY_WIDTH, INVENTORY_HEIGHT);
+        inventoryButtonLabel.setAlignment(Pos.CENTER);
+        inventoryButtonLabel.getStyleClass().add("inventory-toggle-text");
+        inventoryButtonLabel.setOnMouseClicked(event -> {
+            toggleInventoryPanel();
+            event.consume();
+        });
+        refreshInventoryButton();
+        gamePane.getChildren().addAll(shadow, background, inventoryButtonLabel);
+    }
+
+    private void toggleInventoryPanel() {
+        if (inventoryPanel != null) {
+            hideInventoryPanel();
+            return;
+        }
+
+        showInventoryPanel();
+    }
+
+    private void showInventoryPanel() {
+        if (root == null || inventoryPanel != null) {
+            return;
+        }
+
+        Label title = new Label("Inventory");
+        title.getStyleClass().add("inventory-title");
+
+        Button closeButton = new Button("X");
+        closeButton.getStyleClass().add("close-button");
+        closeButton.setOnAction(event -> hideInventoryPanel());
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+        HBox titleRow = new HBox(12, title, spacer, closeButton);
+        titleRow.setAlignment(Pos.CENTER_LEFT);
+
+        FlowPane tokenBox = new FlowPane(8, 8);
+        tokenBox.setPrefWrapLength(430);
+        tokenBox.getStyleClass().add("inventory-token-box");
+
+        inventoryDescriptionLabel = new Label("Click a token to see what it does.");
+        inventoryDescriptionLabel.setWrapText(true);
+        inventoryDescriptionLabel.setMaxWidth(430);
+        inventoryDescriptionLabel.getStyleClass().add("inventory-description");
+
+        if (gameState.getInventory().getTokens().isEmpty()) {
+            Label emptyLabel = new Label("No tokens yet.");
+            emptyLabel.getStyleClass().add("inventory-description");
+            tokenBox.getChildren().add(emptyLabel);
+        } else {
+            for (Token token : gameState.getInventory().getTokens()) {
+                Button tokenButton = new Button(token.getValue());
+                tokenButton.getStyleClass().add("inventory-token-button");
+                tokenButton.setOnAction(event -> inventoryDescriptionLabel.setText(TokenDescriptions.describe(token.getValue())));
+                tokenBox.getChildren().add(tokenButton);
+            }
+        }
+
+        VBox panel = new VBox(10, titleRow, tokenBox, inventoryDescriptionLabel);
+        panel.setPrefWidth(480);
+        panel.setMaxWidth(520);
+        panel.setMaxHeight(Region.USE_PREF_SIZE);
+        panel.getStyleClass().add("inventory-popover");
+        inventoryPanel = panel;
+        root.getChildren().add(inventoryPanel);
+        StackPane.setAlignment(inventoryPanel, Pos.BOTTOM_CENTER);
+        StackPane.setMargin(inventoryPanel, new Insets(0, 0, BOTTOM_CONTROL_MARGIN + 78, 0));
+    }
+
+    private void hideInventoryPanel() {
+        if (root != null && inventoryPanel != null) {
+            root.getChildren().remove(inventoryPanel);
+        }
+        inventoryPanel = null;
+        inventoryDescriptionLabel = null;
+    }
+
+    private void refreshInventoryPanel() {
+        if (inventoryPanel != null) {
+            hideInventoryPanel();
+            showInventoryPanel();
+        }
+        refreshInventoryButton();
+    }
+
+    private void refreshInventoryButton() {
+        if (inventoryButtonLabel != null) {
+            inventoryButtonLabel.setText("Inventory (" + gameState.getInventory().getTokens().size() + ")");
+        }
     }
 
     private Node createGoalIcon() {
@@ -754,11 +1091,11 @@ public class GameView {
     }
 
     private double terminalX() {
-        return Constants.ROOM_WIDTH / 2.0 - TERMINAL_WIDTH / 2.0;
+        return Constants.ROOM_WIDTH - TERMINAL_WIDTH - TERMINAL_MARGIN_RIGHT;
     }
 
     private double terminalY() {
-        return Constants.ROOM_HEIGHT / 2.0 - TERMINAL_HEIGHT / 2.0;
+        return Constants.ROOM_HEIGHT - TERMINAL_HEIGHT - TERMINAL_MARGIN_BOTTOM;
     }
 
     private boolean shouldShowGoalHelper(Level level) {

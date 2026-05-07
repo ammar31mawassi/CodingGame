@@ -2,6 +2,7 @@ package com.codeescape.engine;
 
 import com.codeescape.model.Inventory;
 import com.codeescape.model.Level;
+import com.codeescape.model.GameMode;
 import com.codeescape.model.Player;
 import com.codeescape.util.Constants;
 import com.codeescape.validation.VariableDeclarationValidator;
@@ -10,9 +11,11 @@ public class GameState {
     private Player player;
     private Inventory inventory;
     private Level currentLevel;
+    private GameMode gameMode = GameMode.NORMAL;
     private int bugCount;
     private boolean currentLevelHadMistake;
     private boolean gameFinished;
+    private boolean tutorialSeen;
 
     public GameState() {
         player = createDefaultPlayer();
@@ -29,6 +32,14 @@ public class GameState {
 
     public Level getCurrentLevel() {
         return currentLevel;
+    }
+
+    public GameMode getGameMode() {
+        return gameMode;
+    }
+
+    public void setGameMode(GameMode gameMode) {
+        this.gameMode = gameMode == null ? GameMode.NORMAL : gameMode;
     }
 
     public void setCurrentLevel(Level level) {
@@ -69,6 +80,14 @@ public class GameState {
 
     public void finishGame() {
         gameFinished = true;
+    }
+
+    public boolean hasSeenTutorial() {
+        return tutorialSeen;
+    }
+
+    public void markTutorialSeen() {
+        tutorialSeen = true;
     }
 
     private Player createDefaultPlayer() {

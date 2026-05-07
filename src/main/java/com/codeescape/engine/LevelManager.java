@@ -156,14 +156,16 @@ public class LevelManager {
                 List.of("variables", "conditions", "if-statements"),
                 new VariableThenIfValidator()
         );
+        List<ChestReward> rewards = shuffledMazeRewards();
+        MazeCreator.MazeLayout mazeLayout = createTrainingMaze(rewards.size() + 1);
 
         Room room = new Room(
                 Constants.ROOM_WIDTH,
                 Constants.ROOM_HEIGHT,
                 List.of(),
-                mazeWalls(),
-                mazeChests(),
-                shuffledMazeRewards(),
+                mazeLayout.walls(),
+                mazeLayout.chests(),
+                rewards,
                 ChestReward.helper(),
                 createExitDoor(),
                 puzzle
@@ -176,6 +178,20 @@ public class LevelManager {
                 "",
                 "Hint: The solution uses two lines. Declare x first, then use x in an if condition that evaluates to true.",
                 room
+        );
+    }
+
+    private MazeCreator.MazeLayout createTrainingMaze(int chestCount) {
+        return new MazeCreator().create(
+                6,
+                3,
+                72,
+                78,
+                170,
+                158,
+                14,
+                chestCount,
+                404L
         );
     }
 

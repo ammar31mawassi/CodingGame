@@ -206,6 +206,7 @@
     -fx-padding: 4 9 5 9;
     -fx-font-size: 15px;
     -fx-font-weight: bold;
+    -fx-cursor: hand;
 }
 
 .pixel-button,
@@ -224,6 +225,97 @@
 .pixel-button:disabled,
 .token-button:disabled {
     -fx-opacity: 0.4;
+}
+
+.mode-button-selected {
+    -fx-background-color: #69d7ff;
+    -fx-border-color: #2b74a8;
+}
+
+.typed-code-input {
+    -fx-control-inner-background: #1f2230;
+    -fx-text-fill: #f1f1ec;
+    -fx-highlight-fill: #2b74a8;
+    -fx-highlight-text-fill: #ffffff;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 15px;
+    -fx-border-color: #5e6478;
+    -fx-border-width: 3;
+}
+
+.inventory-toggle-shape {
+    -fx-fill: #8a5a35;
+    -fx-stroke: #5d3828;
+    -fx-stroke-width: 0 0 0 0;
+    -fx-cursor: hand;
+}
+
+.inventory-toggle-shadow {
+    -fx-fill: #5d3828;
+}
+
+.inventory-toggle-text {
+    -fx-text-fill: #f6e0bd;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+}
+
+.inventory-popover {
+    -fx-background-color: rgba(41, 31, 25, 0.96);
+    -fx-border-color: #8a5a35;
+    -fx-border-width: 6;
+    -fx-padding: 14;
+}
+
+.inventory-token-box {
+    -fx-padding: 2 0 2 0;
+}
+
+.inventory-token-button {
+    -fx-background-color: #f1ce54;
+    -fx-text-fill: #292a33;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 0;
+    -fx-border-color: #c4932f;
+    -fx-border-width: 0 0 4 4;
+    -fx-cursor: hand;
+}
+
+.inventory-description {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f6e0bd;
+}
+
+.achievement-toast-layer {
+    -fx-max-width: 420px;
+}
+
+.achievement-toast {
+    -fx-background-color: rgba(35, 30, 24, 0.96);
+    -fx-border-color: #8a6d3b;
+    -fx-border-width: 5;
+    -fx-padding: 13 16 14 16;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.42), 10, 0, 0, 3);
+}
+
+.achievement-toast-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f1ce54;
+}
+
+.achievement-toast-copy {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f1f1ec;
+}
+
+.hard-mode-darkness {
+    -fx-fill: rgba(0, 0, 0, 0.76);
 }
 
 .puzzle-overlay-shell {

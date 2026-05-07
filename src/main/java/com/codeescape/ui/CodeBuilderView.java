@@ -2,6 +2,7 @@ package com.codeescape.ui;
 
 import com.codeescape.model.Inventory;
 import com.codeescape.model.Puzzle;
+import com.codeescape.validation.TypedTokenUsageValidator;
 import com.codeescape.validation.ValidationResult;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,6 +13,7 @@ import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.Separator;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Region;
@@ -31,9 +33,11 @@ public class CodeBuilderView {
     private final Label feedbackLabel = new Label();
     private Label titleLabel;
     private Label instructionsLabel;
+    private TextArea typedCodeInput;
     private final Button removeLastButton = new Button("Remove Last");
     private final Button clearButton = new Button("Clear");
-    private final Button submitButton = new Button("Submit");
+    private final Button submitButton = new Button("Submit Tokens");
+    private final Button submitTypedButton = new Button("Submit Typed Code");
     private boolean showGoal;
     private boolean solved;
 
@@ -78,6 +82,7 @@ public class CodeBuilderView {
         removeLastButton.setOnAction(event -> removeLastToken());
         clearButton.setOnAction(event -> clearAnswer());
         submitButton.setOnAction(event -> submitAnswer());
+        submitTypedButton.setOnAction(event -> submitTypedAnswer());
 
         answerPreviewLabel.setWrapText(true);
         answerPreviewLabel.setMaxWidth(Double.MAX_VALUE);
@@ -90,6 +95,14 @@ public class CodeBuilderView {
         removeLastButton.getStyleClass().add("pixel-button");
         clearButton.getStyleClass().add("pixel-button");
         submitButton.getStyleClass().add("pixel-button");
+        submitTypedButton.getStyleClass().add("pixel-button");
+
+        typedCodeInput = new TextArea();
+        typedCodeInput.setPromptText("Type Java code here...");
+        typedCodeInput.setWrapText(true);
+        typedCodeInput.setPrefRowCount(4);
+        typedCodeInput.getStyleClass().add("typed-code-input");
+        typedCodeInput.textProperty().addListener((observable, oldValue, newValue) -> updateControls());
 
         refreshAvailableTokens();
         refreshSelectedTokens();
@@ -104,6 +117,9 @@ public class CodeBuilderView {
         Label availableTokensLabel = new Label("Available Tokens");
         availableTokensLabel.getStyleClass().add("puzzle-copy");
 
+        Label typedCodeLabel = new Label("Typed Code");
+        typedCodeLabel.getStyleClass().add("puzzle-copy");
+
         VBox root = new VBox(
                 12,
                 titleLabel,
@@ -112,9 +128,12 @@ public class CodeBuilderView {
                 answerLabel,
                 answerPreviewLabel,
                 selectedTokenBox,
+                typedCodeLabel,
+                typedCodeInput,
                 availableTokensLabel,
                 availableTokenBox,
                 actionControls,
+                submitTypedButton,
                 feedbackLabel
         );
         root.setPadding(new Insets(20));
@@ -151,6 +170,19 @@ public class CodeBuilderView {
 
         selectedTokens.remove(selectedTokens.size() - 1);
         selectedTokenIndexes.remove(selectedTokenIndexes.size() - 1);
+        feedbackLabel.setText("");
+        refreshSelectedTokens();
+        refreshAvailableTokens();
+        updateControls();
+    }
+
+    private void removeTokenAt(int selectedIndex) {
+        if (solved || selectedIndex < 0 || selectedIndex >= selectedTokens.size()) {
+            return;
+        }
+
+        selectedTokens.remove(selectedIndex);
+        selectedTokenIndexes.remove(selectedIndex);
         feedbackLabel.setText("");
         refreshSelectedTokens();
         refreshAvailableTokens();
@@ -210,7 +242,26 @@ public class CodeBuilderView {
     }
 
     private void submitAnswer() {
-        ValidationResult result = puzzle.checkAnswer(buildCodeString());
+        submitCode(buildCodeString());
+    }
+
+    private void submitTypedAnswer() {
+        if (typedCodeInput == null) {
+            return;
+        }
+
+        String typedCode = typedCodeInput.getText();
+        ValidationResult tokenUsageResult = TypedTokenUsageValidator.validate(typedCode, inventory.getTokenValues());
+        if (!tokenUsageResult.isValid()) {
+            showFeedback(tokenUsageResult);
+            return;
+        }
+
+        submitCode(typedCode);
+    }
+
+    private void submitCode(String code) {
+        ValidationResult result = puzzle.checkAnswer(code);
         showFeedback(result);
         if (result.isValid()) {
             solved = true;
@@ -236,15 +287,14 @@ public class CodeBuilderView {
     }
 
     private void refreshSelectedTokens() {
-        selectedTokenBox.getChildren().setAll(
-                selectedTokens.stream()
-                        .map(token -> {
-                            Label label = new Label(token);
-                            label.getStyleClass().add("selected-token");
-                            return label;
-                        })
-                        .toList()
-        );
+        selectedTokenBox.getChildren().clear();
+        for (int i = 0; i < selectedTokens.size(); i++) {
+            int selectedIndex = i;
+            Label label = new Label(selectedTokens.get(i));
+            label.getStyleClass().add("selected-token");
+            label.setOnMouseClicked(event -> removeTokenAt(selectedIndex));
+            selectedTokenBox.getChildren().add(label);
+        }
 
         String code = buildCodeString();
         answerPreviewLabel.setText(code.isBlank() ? "(empty)" : code);
@@ -265,7 +315,12 @@ public class CodeBuilderView {
         boolean hasSelection = !selectedTokens.isEmpty();
         removeLastButton.setDisable(!hasSelection || solved);
         clearButton.setDisable(!hasSelection || solved);
-        submitButton.setDisable(!hasSelection || solved);
+        submitButton.setDisable(!hasSelection || solved || !showGoal);
+        boolean hasTypedCode = typedCodeInput != null && !typedCodeInput.getText().isBlank();
+        submitTypedButton.setDisable(!hasTypedCode || solved || !showGoal);
+        if (typedCodeInput != null) {
+            typedCodeInput.setEditable(!solved);
+        }
     }
 
     private void rebuildAvailableTokenButtons(List<String> tokenValues) {
