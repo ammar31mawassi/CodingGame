@@ -46,4 +46,14 @@ class TypedTokenUsageValidatorTest {
 
         assertTrue(result.isValid());
     }
+
+    @Test
+    void acceptsDottedAccessBuiltFromSeparateTokens() {
+        ValidationResult result = TypedTokenUsageValidator.validate(
+                "ironChest.locked = false;",
+                List.of("ironChest", ".", "locked", "=", "false", ";")
+        );
+
+        assertTrue(result.isValid());
+    }
 }

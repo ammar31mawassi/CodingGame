@@ -21,14 +21,46 @@ public final class TypedTokenUsageValidator {
         }
 
         for (String token : typedTokens) {
-            int available = availableCounts.getOrDefault(token, 0);
-            if (available <= 0) {
+            if (consumeToken(token, availableCounts)) {
+                continue;
+            }
+
+            if (!consumeDottedTokenParts(token, availableCounts)) {
                 return ValidationResult.failure("Collect the '" + token + "' token before typing that code.");
             }
-            availableCounts.put(token, available - 1);
         }
 
         return ValidationResult.success("Typed code uses collected tokens.");
+    }
+
+    private static boolean consumeToken(String token, Map<String, Integer> availableCounts) {
+        int available = availableCounts.getOrDefault(token, 0);
+        if (available <= 0) {
+            return false;
+        }
+        availableCounts.put(token, available - 1);
+        return true;
+    }
+
+    private static boolean consumeDottedTokenParts(String token, Map<String, Integer> availableCounts) {
+        if (!token.contains(".")) {
+            return false;
+        }
+
+        Map<String, Integer> trialCounts = new HashMap<>(availableCounts);
+        String[] parts = token.split("\\.", -1);
+        for (int index = 0; index < parts.length; index++) {
+            if (parts[index].isBlank() || !consumeToken(parts[index], trialCounts)) {
+                return false;
+            }
+            if (index < parts.length - 1 && !consumeToken(".", trialCounts)) {
+                return false;
+            }
+        }
+
+        availableCounts.clear();
+        availableCounts.putAll(trialCounts);
+        return true;
     }
 
     static List<String> tokenize(String code) {
@@ -64,11 +96,15 @@ public final class TypedTokenUsageValidator {
                 continue;
             }
 
+            if (current == '-' && index + 1 < code.length() && Character.isDigit(code.charAt(index + 1))) {
+                int end = readNumber(code, index + 1);
+                tokens.add(code.substring(index, end));
+                index = end;
+                continue;
+            }
+
             if (Character.isDigit(current)) {
-                int end = index + 1;
-                while (end < code.length() && (Character.isDigit(code.charAt(end)) || code.charAt(end) == '.')) {
-                    end++;
-                }
+                int end = readNumber(code, index);
                 tokens.add(code.substring(index, end));
                 index = end;
                 continue;
@@ -103,6 +139,14 @@ public final class TypedTokenUsageValidator {
                 || token.equals("||")
                 || token.equals("++")
                 || token.equals("--");
+    }
+
+    private static int readNumber(String code, int startIndex) {
+        int end = startIndex + 1;
+        while (end < code.length() && (Character.isDigit(code.charAt(end)) || code.charAt(end) == '.')) {
+            end++;
+        }
+        return end;
     }
 
     private static int readQuotedToken(String code, int startIndex, char quote) {

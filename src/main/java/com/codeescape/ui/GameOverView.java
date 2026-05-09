@@ -18,7 +18,7 @@ public class GameOverView {
 
     public Parent createView() {
         Label title = new Label("Code Escape Complete");
-        Label summary = new Label("You completed variables, if-statements, and classes.");
+        Label summary = new Label("You completed variables, if-statements, classes, and objects.");
         Button normalRestartButton = new Button("Restart Normal");
         normalRestartButton.getStyleClass().add("pixel-button");
         normalRestartButton.setOnAction(event -> app.startNewGame(GameMode.NORMAL));

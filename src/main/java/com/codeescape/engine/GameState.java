@@ -51,8 +51,16 @@ public class GameState {
         player = createDefaultPlayer();
         inventory = new Inventory();
         currentLevelHadMistake = false;
+        gameFinished = false;
         VariableDeclarationValidator.getInstance();
         VariableDeclarationValidator.resetVariables();
+    }
+
+    public void restoreCheckpoint(Level level, GameMode gameMode, int bugCount, boolean tutorialSeen) {
+        setGameMode(gameMode);
+        resetForLevel(level);
+        this.bugCount = Math.max(0, Math.min(bugCount, 3));
+        this.tutorialSeen = tutorialSeen;
     }
 
     public int getBugCount() {

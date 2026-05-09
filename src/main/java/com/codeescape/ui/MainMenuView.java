@@ -44,20 +44,32 @@ public class MainMenuView {
         startButton.getStyleClass().add("pixel-button");
         startButton.setOnAction(event -> app.startNewGame(app.getSelectedGameMode()));
 
+        VBox actionButtons = new VBox(12);
+        actionButtons.setAlignment(Pos.CENTER);
+        if (app.hasContinuableSave()) {
+            Button continueButton = new Button("Continue Game");
+            continueButton.getStyleClass().add("pixel-button");
+            continueButton.setOnAction(event -> app.continueGame());
+            actionButtons.getChildren().add(continueButton);
+        }
+        actionButtons.getChildren().add(startButton);
+
         Label selectorTitle = new Label("Level Select");
         selectorTitle.getStyleClass().add("menu-subtitle");
 
         FlowPane levelSelector = new FlowPane(10, 10);
         levelSelector.setAlignment(Pos.CENTER);
         levelSelector.setMaxWidth(720);
+        int highestSelectableLevel = app.getHighestSelectableLevel();
         for (Level level : app.getAvailableLevels()) {
             Button levelButton = new Button("Level " + level.getLevelNumber());
             levelButton.getStyleClass().add("pixel-button");
-            levelButton.setOnAction(event -> app.startAtLevel(level.getLevelNumber(), app.getSelectedGameMode()));
+            levelButton.setDisable(level.getLevelNumber() > highestSelectableLevel);
+            levelButton.setOnAction(event -> app.startAtLevel(level.getLevelNumber()));
             levelSelector.getChildren().add(levelButton);
         }
 
-        VBox root = new VBox(20, title, modeTitle, modeSelector, startButton, selectorTitle, levelSelector);
+        VBox root = new VBox(20, title, modeTitle, modeSelector, actionButtons, selectorTitle, levelSelector);
         root.setAlignment(Pos.CENTER);
         root.getStyleClass().add("main-menu");
         return root;

@@ -46,9 +46,29 @@ class IfStatementValidatorTest {
     }
 
     @Test
+    void acceptsCompactTypedSpacing() {
+        assertTrue(validator.validate("if(x>5){}").isValid());
+        assertTrue(validator.validate("if(active==true){}").isValid());
+    }
+
+    @Test
+    void acceptsSimpleBlockContentsAndLogicalConditions() {
+        VariableDeclarationValidator variableValidator = VariableDeclarationValidator.getInstance();
+        assertTrue(variableValidator.validate("boolean ready = true;").isValid());
+
+        assertTrue(validator.validate("if (x > 5) { System.out.println(\"ok\"); }").isValid());
+        assertTrue(validator.validate("if (ready && score > 0) { score = score + 1; }").isValid());
+    }
+
+    @Test
     void rejectsAssignmentInsideCondition() {
         assertFalse(validator.validate("if (active = true) {}").isValid());
         assertFalse(validator.validate("if (x = 5) {}").isValid());
+    }
+
+    @Test
+    void rejectsElseBranchForIfOnlyPuzzle() {
+        assertFalse(validator.validate("if (x > 5) {} else {}").isValid());
     }
 
     @Test

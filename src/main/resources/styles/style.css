@@ -78,10 +78,33 @@
     -fx-border-color: #33231d;
 }
 
+.room-chest-locked {
+    -fx-background-color: #6e3a50;
+    -fx-border-color: #2b1925;
+}
+
 .room-chest-text {
     -fx-font-size: 18px;
     -fx-font-weight: bold;
     -fx-text-fill: #f1ce54;
+}
+
+.programmable-object {
+    -fx-background-color: #69d7ff;
+    -fx-border-color: #2b74a8;
+    -fx-border-width: 0 0 6 6;
+    -fx-cursor: hand;
+}
+
+.programmable-object-active {
+    -fx-background-color: #43d868;
+    -fx-border-color: #247f42;
+}
+
+.programmable-object-text {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #233342;
 }
 
 .pickup-message {

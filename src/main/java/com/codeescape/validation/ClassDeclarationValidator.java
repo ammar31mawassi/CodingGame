@@ -1,76 +1,102 @@
 package com.codeescape.validation;
 
+import com.github.javaparser.ast.body.BodyDeclaration;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.ConstructorDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.MethodDeclaration;
+import com.github.javaparser.ast.body.VariableDeclarator;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public class ClassDeclarationValidator implements CodeValidator {
-    private static final Pattern CLASS_PATTERN = Pattern.compile("^class\\s+([A-Z][A-Za-z0-9_]*)\\s*\\{(.*)}$", Pattern.DOTALL);
-
     @Override
     public ValidationResult validate(String code) {
-        if (code == null || code.isBlank()) {
-            return ValidationResult.failure("Empty class declaration");
-        }
-
-        String trimmedCode = code.trim();
-        Matcher matcher = CLASS_PATTERN.matcher(trimmedCode);
-        if (!matcher.matches()) {
+        Optional<ClassOrInterfaceDeclaration> classDeclaration = parseSingleClass(code);
+        if (classDeclaration.isEmpty()) {
             return ValidationResult.failure("Invalid class structure");
         }
 
-        String className = matcher.group(1);
-        if (!isValidClassName(className)) {
+        ClassOrInterfaceDeclaration declaration = classDeclaration.get();
+        if (!isValidClassName(declaration.getNameAsString())) {
             return ValidationResult.failure("Invalid class name");
         }
 
-        String body = matcher.group(2).trim();
-        if (body.isEmpty()) {
-            return ValidationResult.success("Valid class declaration");
-        }
-
-        if (!body.endsWith(";")) {
-            return ValidationResult.failure("Class body can only contain field declarations");
-        }
-
-        VariableDeclarationValidator fieldValidator = VariableDeclarationValidator.getInstance();
         Set<String> fieldNames = new HashSet<>();
-        for (String field : body.split(";")) {
-            String fieldDeclaration = field.trim();
-            if (fieldDeclaration.isEmpty()) {
-                continue;
-            }
-
-            String fieldName = extractFieldName(fieldDeclaration);
-            if (fieldName == null || fieldNames.contains(fieldName)) {
-                return ValidationResult.failure("Invalid or duplicate field name");
-            }
-            fieldNames.add(fieldName);
-
-            ValidationResult result = fieldValidator.validateFieldDeclaration(fieldDeclaration + ";");
+        for (BodyDeclaration<?> member : declaration.getMembers()) {
+            ValidationResult result = validateMember(member, declaration.getNameAsString(), fieldNames);
             if (!result.isValid()) {
-                return ValidationResult.failure("Invalid field declaration: " + fieldDeclaration);
+                return result;
             }
         }
 
         return ValidationResult.success("Valid class declaration");
     }
 
-    private boolean isValidClassName(String name) {
-        return name != null && name.matches("[A-Z][A-Za-z0-9_]*");
+    private Optional<ClassOrInterfaceDeclaration> parseSingleClass(String code) {
+        return JavaSyntaxValidator.parseClassDeclarationAst(code)
+                .filter(compilationUnit -> compilationUnit.getTypes().size() == 1)
+                .map(compilationUnit -> compilationUnit.getType(0))
+                .filter(type -> type instanceof ClassOrInterfaceDeclaration)
+                .map(type -> (ClassOrInterfaceDeclaration) type)
+                .filter(type -> !type.isInterface());
     }
 
-    private boolean hasValidBraces(String code) {
-        return code != null && code.contains("{") && code.endsWith("}");
-    }
-
-    private String extractFieldName(String fieldDeclaration) {
-        String[] words = fieldDeclaration.trim().split("\\s+");
-        if (words.length < 2) {
-            return null;
+    private ValidationResult validateMember(
+            BodyDeclaration<?> member,
+            String className,
+            Set<String> fieldNames
+    ) {
+        if (member instanceof FieldDeclaration field) {
+            return validateField(field, fieldNames);
+        }
+        if (member instanceof ConstructorDeclaration constructor) {
+            return validateConstructor(constructor, className);
+        }
+        if (member instanceof MethodDeclaration method) {
+            return validateMethod(method);
         }
 
-        return words[1];
+        return ValidationResult.failure("Class body can only contain fields, constructors, and simple methods.");
+    }
+
+    private ValidationResult validateField(FieldDeclaration field, Set<String> fieldNames) {
+        for (VariableDeclarator variable : field.getVariables()) {
+            String fieldName = variable.getNameAsString();
+            if (!VariableDeclarationValidator.isValidVariableName(fieldName, false) || fieldNames.contains(fieldName)) {
+                return ValidationResult.failure("Invalid or duplicate field name");
+            }
+            fieldNames.add(fieldName);
+
+            if (variable.getInitializer().isPresent()) {
+                Optional<ExpressionValue> value = EducationalExpressionEvaluator.evaluate(variable.getInitializer().get());
+                String type = variable.getType().asString();
+                if (VariableDeclarationValidator.isSupportedValueType(type) && value.isEmpty()) {
+                    return ValidationResult.failure("Invalid field declaration: " + fieldName);
+                }
+                if (value.isPresent() && !VariableDeclarationValidator.isCompatibleValue(type, value.get())) {
+                    return ValidationResult.failure("Invalid field declaration: " + fieldName);
+                }
+            }
+        }
+
+        return ValidationResult.success("Valid field declaration");
+    }
+
+    private ValidationResult validateConstructor(ConstructorDeclaration constructor, String className) {
+        return constructor.getNameAsString().equals(className)
+                ? ValidationResult.success("Valid constructor declaration")
+                : ValidationResult.failure("Constructor name must match the class name.");
+    }
+
+    private ValidationResult validateMethod(MethodDeclaration method) {
+        return method.getBody().isPresent()
+                ? ValidationResult.success("Valid method declaration")
+                : ValidationResult.failure("Methods need a body.");
+    }
+
+    private boolean isValidClassName(String name) {
+        return name != null && name.matches("[A-Z][A-Za-z0-9_]*");
     }
 }

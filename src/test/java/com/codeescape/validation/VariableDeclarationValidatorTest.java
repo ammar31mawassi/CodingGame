@@ -31,6 +31,23 @@ class VariableDeclarationValidatorTest {
     }
 
     @Test
+    void acceptsDeclarationsWithoutSpacesAroundAssignment() {
+        assertTrue(validator.validate("int x=5;").isValid());
+        assertTrue(validator.validate("int debt=-5;").isValid());
+        assertTrue(validator.validate("double price=4.5;").isValid());
+        assertTrue(validator.validate("String name=\"Ammar\";").isValid());
+        assertTrue(validator.validate("boolean active=true;").isValid());
+    }
+
+    @Test
+    void acceptsArithmeticAndBooleanInitializers() {
+        assertTrue(validator.validate("int total = 2 + 3 * 4;").isValid());
+        assertTrue(validator.validate("double average = (8 + 2) / 2.0;").isValid());
+        assertTrue(validator.validate("String greeting = \"Hi \" + \"Ammar\";").isValid());
+        assertTrue(validator.validate("boolean ready = 3 > 2;").isValid());
+    }
+
+    @Test
     void rejectsInvalidVariableNames() {
         assertFalse(validator.validate("int 5 = x;").isValid());
         assertFalse(validator.validate("int 5score = 10;").isValid());
@@ -47,6 +64,8 @@ class VariableDeclarationValidatorTest {
         assertFalse(validator.validate("boolean active = 10;").isValid());
         assertFalse(validator.validate("double price = \"hello\";").isValid());
         assertFalse(validator.validate("int count = 4.5;").isValid());
+        assertFalse(validator.validate("int count = 2.5 + 1.5;").isValid());
+        assertFalse(validator.validate("int broken = -;").isValid());
     }
 
     @Test

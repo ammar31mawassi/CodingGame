@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MazeCreatorTest {
     @Test
@@ -18,5 +19,10 @@ class MazeCreatorTest {
         assertEquals(first.walls().get(0).getX(), second.walls().get(0).getX());
         assertEquals(19, first.chests().size());
         assertFalse(first.walls().isEmpty());
+        assertTrue(first.walls().stream().anyMatch(wall -> wall.getY() == 71 && wall.getHeight() == 14));
+        assertTrue(first.chests().stream().allMatch(chest -> chest.getX() >= 72
+                && chest.getY() >= 78
+                && chest.getX() + chest.getWidth() <= 72 + 6 * 170
+                && chest.getY() + chest.getHeight() <= 78 + 3 * 158));
     }
 }

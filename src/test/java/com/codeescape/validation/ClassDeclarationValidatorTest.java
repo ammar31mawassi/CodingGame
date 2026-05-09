@@ -18,12 +18,25 @@ class ClassDeclarationValidatorTest {
     @Test
     void acceptsClassDeclarationsWithFieldsOnly() {
         assertTrue(validator.validate("class Student { String name; }").isValid());
+        assertTrue(validator.validate("class Book { String title=\"Code\"; int pages=120; }").isValid());
         assertTrue(validator.validate("class Person { int age = 20; boolean active = true; }").isValid());
         assertTrue(validator.validate("""
                 class Product {
                     String name = "Book";
                     double price = 4.5;
                     char grade = 'A';
+                }
+                """).isValid());
+    }
+
+    @Test
+    void acceptsConstructorsAndSimpleMethods() {
+        assertTrue(validator.validate("""
+                class Person {
+                    String name;
+                    Person(String name) { this.name = name; }
+                    String getName() { return name; }
+                    void rename(String name) { this.name = name; }
                 }
                 """).isValid());
     }
@@ -54,14 +67,20 @@ class ClassDeclarationValidatorTest {
     }
 
     @Test
-    void rejectsMethodsAndStatementsInsideClassBody() {
-        assertFalse(validator.validate("class Person { void run() {} }").isValid());
+    void rejectsUnsupportedMembersAndBodylessMethods() {
         assertFalse(validator.validate("class Person { if (age > 18) {} }").isValid());
         assertFalse(validator.validate("class Person { int age = 20; void run(); }").isValid());
+        assertFalse(validator.validate("class Person { class Nested {} }").isValid());
     }
 
     @Test
     void rejectsDuplicateFieldNames() {
         assertFalse(validator.validate("class Person { String name; int name = 5; }").isValid());
+        assertFalse(validator.validate("class Person { int age=20; double age=4.5; }").isValid());
+    }
+
+    @Test
+    void rejectsMultipleTopLevelClasses() {
+        assertFalse(validator.validate("class Person {} class Student {}").isValid());
     }
 }

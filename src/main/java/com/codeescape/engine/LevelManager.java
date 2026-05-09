@@ -6,13 +6,18 @@ import com.codeescape.model.ChestReward;
 import com.codeescape.model.Level;
 import com.codeescape.model.MultipleChoiceQuestion;
 import com.codeescape.model.Puzzle;
+import com.codeescape.model.ProgrammableObject;
 import com.codeescape.model.Room;
 import com.codeescape.model.Token;
 import com.codeescape.model.TokenType;
 import com.codeescape.model.Wall;
 import com.codeescape.util.Constants;
+import com.codeescape.validation.ClassConstructorMethodValidator;
+import com.codeescape.validation.ClassFieldsValidator;
 import com.codeescape.validation.IfElsePrintValidator;
 import com.codeescape.validation.IfStatementValidator;
+import com.codeescape.validation.ObjectCreateAndCallValidator;
+import com.codeescape.validation.ObjectFieldAssignmentValidator;
 import com.codeescape.validation.StringDeclarationValidator;
 import com.codeescape.validation.VariableDeclarationValidator;
 import com.codeescape.validation.VariableThenIfValidator;
@@ -32,6 +37,9 @@ public class LevelManager {
         levels.add(createIfStatementLevel());
         levels.add(createVariableThenIfLevel());
         levels.add(createQuestionRoomLevel());
+        levels.add(createClassBlueprintLevel());
+        levels.add(createConstructorForgeLevel());
+        levels.add(createObjectLockLevel());
     }
 
     public Level getCurrentLevel() {
@@ -381,6 +389,211 @@ public class LevelManager {
                 "double",
                 ChestReward.code("x")
         );
+    }
+
+    private Level createClassBlueprintLevel() {
+        Puzzle puzzle = new Puzzle(
+                "Class Blueprint",
+                "Build a class named Item with a String name field and an int power field.",
+                List.of("classes", "fields"),
+                new ClassFieldsValidator()
+        );
+
+        List<Token> levelTokens = tokens("class", "Item", "{", "String", "name", ";", "int", ";", "}");
+        Room room = new Room(
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
+                levelTokens,
+                classRoomWalls(),
+                List.of(new Chest(1010, 520, 46, 34)),
+                List.of(),
+                ChestReward.goal(),
+                createExitDoor(),
+                new Door(520, 310, 92, 14),
+                new MultipleChoiceQuestion(
+                        "Which type should the power field use?",
+                        "_____ power;",
+                        List.of("int", "String", "boolean", "class"),
+                        "int",
+                        ChestReward.code("power")
+                ),
+                puzzle
+        );
+
+        return new Level(
+                6,
+                "Class Blueprint",
+                "Classes and fields",
+                "A class is a blueprint. Fields describe the data each object can store, such as a name or power value.",
+                "Hint: The class name is Item, and it has two fields: String name and int power.",
+                room
+        );
+    }
+
+    private Level createConstructorForgeLevel() {
+        Puzzle puzzle = new Puzzle(
+                "Constructor Forge",
+                "Build a Player class with fields, a constructor, and a heal method.",
+                List.of("classes", "constructors", "methods"),
+                new ClassConstructorMethodValidator()
+        );
+
+        List<ChestReward> rewards = classConstructorRewards();
+        Room room = new Room(
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
+                List.of(),
+                constructorRoomWalls(),
+                spreadChests(rewards.size() + 1),
+                rewards,
+                ChestReward.goal(),
+                createExitDoor(),
+                new Door(635, 315, 96, 14),
+                new MultipleChoiceQuestion(
+                        "Which method name should increase health?",
+                        "void _____() { health = health + 1; }",
+                        List.of("heal", "class", "Player", "new"),
+                        "heal",
+                        ChestReward.code("heal")
+                ),
+                puzzle
+        );
+
+        return new Level(
+                7,
+                "Constructor Forge",
+                "Constructors and methods",
+                "A constructor prepares a new object by assigning its fields. Methods describe actions the object can do.",
+                "Hint: Assign both fields in the constructor, then write void heal() to increase health by 1.",
+                room
+        );
+    }
+
+    private Level createObjectLockLevel() {
+        Puzzle finalPuzzle = new Puzzle(
+                "Object Lock",
+                "Create an Item object named key, then call key.use().",
+                List.of("objects", "constructors", "method calls"),
+                new ObjectCreateAndCallValidator()
+        );
+        Puzzle objectPuzzle = new Puzzle(
+                "ironChest",
+                "Set the ironChest locked field to false.",
+                List.of("objects", "fields", "assignment"),
+                new ObjectFieldAssignmentValidator()
+        );
+
+        Chest goalChest = new Chest(990, 510, 56, 42, true);
+        ProgrammableObject ironChest = new ProgrammableObject(
+                "ironChest",
+                "ironChest",
+                610,
+                270,
+                118,
+                58,
+                objectPuzzle,
+                goalChest
+        );
+
+        List<Token> levelTokens = tokens(
+                "ironChest", ".", "locked", "=", "false", ";",
+                "Item", "key", "=", "new", "Item", "(",
+                "\"key\"", ")", ";", "key", ".", "(", ")", ";"
+        );
+        Room room = new Room(
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
+                levelTokens,
+                objectLockWalls(),
+                List.of(goalChest),
+                List.of(ironChest),
+                List.of(),
+                ChestReward.goal(),
+                createExitDoor(),
+                new Door(500, 395, 120, 14),
+                new MultipleChoiceQuestion(
+                        "Which method should the key object call?",
+                        "key._____();",
+                        List.of("use", "new", "locked", "class"),
+                        "use",
+                        ChestReward.code("use")
+                ),
+                finalPuzzle
+        );
+
+        return new Level(
+                8,
+                "Object Lock",
+                "Objects and field access",
+                "Objects are created from classes. Dot access lets code reach an object's fields and methods.",
+                "Hint: First program ironChest with ironChest.locked = false;, then open the Goal chest and create the key object.",
+                room
+        );
+    }
+
+    private List<Wall> classRoomWalls() {
+        return List.of(
+                new Wall(190, 120, 14, 360),
+                new Wall(360, 120, 14, 185),
+                new Wall(360, 385, 14, 145),
+                new Wall(520, 120, 14, 190),
+                new Wall(610, 310, 210, 14),
+                new Wall(820, 120, 14, 360)
+        );
+    }
+
+    private List<Wall> constructorRoomWalls() {
+        return List.of(
+                new Wall(150, 100, 14, 430),
+                new Wall(310, 100, 14, 230),
+                new Wall(475, 210, 14, 330),
+                new Wall(635, 92, 14, 220),
+                new Wall(730, 315, 210, 14),
+                new Wall(940, 160, 14, 360),
+                new Wall(310, 330, 170, 14)
+        );
+    }
+
+    private List<Wall> objectLockWalls() {
+        return List.of(
+                new Wall(170, 90, 14, 425),
+                new Wall(330, 205, 14, 330),
+                new Wall(500, 90, 14, 300),
+                new Wall(620, 395, 210, 14),
+                new Wall(830, 150, 14, 385),
+                new Wall(980, 90, 14, 310)
+        );
+    }
+
+    private List<Chest> spreadChests(int count) {
+        List<Chest> chests = new ArrayList<>();
+        double[] xs = {215, 350, 485, 620, 755, 890, 1035};
+        double[] ys = {82, 168, 254, 340, 426, 512};
+        for (double y : ys) {
+            for (double x : xs) {
+                if (chests.size() >= count) {
+                    return chests;
+                }
+                chests.add(new Chest(x, y, 46, 34));
+            }
+        }
+        return chests;
+    }
+
+    private List<ChestReward> classConstructorRewards() {
+        List<ChestReward> rewards = new ArrayList<>();
+        for (String value : List.of(
+                "class", "Player", "{", "String", "name", ";",
+                "int", "health", ";", "Player", "(", "String",
+                "name", ",", "int", "health", ")", "{",
+                "this.name", "=", "name", ";", "this.health", "=",
+                "health", ";", "}", "void", "(", ")", "{",
+                "health", "=", "health", "+", "1", ";", "}", "}"
+        )) {
+            rewards.add(ChestReward.code(value));
+        }
+        Collections.shuffle(rewards);
+        return rewards;
     }
 
     private Door createExitDoor() {

@@ -10,6 +10,7 @@ public class Room {
     private final List<Token> tokens;
     private final List<Wall> walls;
     private final List<Chest> chests;
+    private final List<ProgrammableObject> programmableObjects;
     private final List<ChestReward> chestRewards;
     private final ChestReward finalChestReward;
     private final Door door;
@@ -22,7 +23,7 @@ public class Room {
     private boolean helperFound;
 
     public Room(int width, int height, List<Token> tokens, Door door, Puzzle puzzle) {
-        this(width, height, tokens, List.of(), List.of(), List.of(), null, door, null, null, puzzle);
+        this(width, height, tokens, List.of(), List.of(), List.of(), List.of(), null, door, null, null, puzzle);
     }
 
     public Room(
@@ -36,7 +37,7 @@ public class Room {
             Door door,
             Puzzle puzzle
     ) {
-        this(width, height, tokens, walls, chests, chestRewards, finalChestReward, door, null, null, puzzle);
+        this(width, height, tokens, walls, chests, List.of(), chestRewards, finalChestReward, door, null, null, puzzle);
     }
 
     public Room(
@@ -52,11 +53,29 @@ public class Room {
             MultipleChoiceQuestion challengeQuestion,
             Puzzle puzzle
     ) {
+        this(width, height, tokens, walls, chests, List.of(), chestRewards, finalChestReward, door, challengeDoor, challengeQuestion, puzzle);
+    }
+
+    public Room(
+            int width,
+            int height,
+            List<Token> tokens,
+            List<Wall> walls,
+            List<Chest> chests,
+            List<ProgrammableObject> programmableObjects,
+            List<ChestReward> chestRewards,
+            ChestReward finalChestReward,
+            Door door,
+            Door challengeDoor,
+            MultipleChoiceQuestion challengeQuestion,
+            Puzzle puzzle
+    ) {
         this.width = width;
         this.height = height;
         this.tokens = new ArrayList<>(tokens);
         this.walls = new ArrayList<>(walls);
         this.chests = new ArrayList<>(chests);
+        this.programmableObjects = new ArrayList<>(programmableObjects);
         this.chestRewards = new ArrayList<>(chestRewards);
         this.finalChestReward = finalChestReward;
         this.door = door;
@@ -87,6 +106,10 @@ public class Room {
         return Collections.unmodifiableList(chests);
     }
 
+    public List<ProgrammableObject> getProgrammableObjects() {
+        return Collections.unmodifiableList(programmableObjects);
+    }
+
     public Door getDoor() {
         return door;
     }
@@ -115,7 +138,7 @@ public class Room {
     }
 
     public ChestReward openChest(Chest chest, Inventory inventory) {
-        if (chest.isOpened()) {
+        if (chest.isOpened() || chest.isLocked()) {
             return null;
         }
 

@@ -31,6 +31,16 @@ class VariableThenIfValidatorTest {
     }
 
     @Test
+    void acceptsCompactTypedSpacing() {
+        assertTrue(validator.validate("int x=5;if(x>3){}").isValid());
+    }
+
+    @Test
+    void acceptsArithmeticDeclarationValue() {
+        assertTrue(validator.validate("int x = 2 + 3;\nif (x > 4) {}").isValid());
+    }
+
+    @Test
     void rejectsWrongVariableDeclaration() {
         assertFalse(validator.validate("String x = \"ammar\";\nif (x > 3) {}").isValid());
         assertFalse(validator.validate("int name = 5;\nif (x > 3) {}").isValid());

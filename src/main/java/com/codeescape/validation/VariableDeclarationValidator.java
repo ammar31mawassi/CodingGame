@@ -1,19 +1,25 @@
 package com.codeescape.validation;
 
-import java.util.Arrays;
+import com.github.javaparser.ast.body.ClassOrInterfaceDeclaration;
+import com.github.javaparser.ast.body.FieldDeclaration;
+import com.github.javaparser.ast.body.VariableDeclarator;
+import com.github.javaparser.ast.expr.Expression;
+import com.github.javaparser.ast.expr.VariableDeclarationExpr;
+import com.github.javaparser.ast.stmt.Statement;
 import java.util.HashMap;
+import java.util.Optional;
 import java.util.Set;
 
 public class VariableDeclarationValidator implements CodeValidator {
     private record VariableData(String type, String value) {
     }
 
-    private static HashMap<String, VariableData> variables;
-    private static volatile VariableDeclarationValidator instance;
     private static final Set<String> VALID_TYPES = Set.of("int", "double", "char", "String", "boolean");
     private static final Set<String> INVALID_WORDS = Set.of(
             "int", "double", "char", "String", "boolean", "while", "if", "for", "class"
     );
+    private static HashMap<String, VariableData> variables;
+    private static volatile VariableDeclarationValidator instance;
 
     private VariableDeclarationValidator() {
         variables = new HashMap<>();
@@ -29,151 +35,152 @@ public class VariableDeclarationValidator implements CodeValidator {
         }
         return instance;
     }
+
     public static String checkNameOfVariable(String variableName) {
         getInstance();
         VariableData variableData = variables.get(variableName);
         return variableData == null ? "Does not exist" : variableData.type();
     }
+
     public static String checkValueOfVariable(String variableName) {
         getInstance();
         VariableData variableData = variables.get(variableName);
         return variableData == null ? "Does not exist" : variableData.value();
     }
-    public ValidationResult validate(String line){
+
+    @Override
+    public ValidationResult validate(String line) {
         return validateDeclaration(line, true);
     }
 
     public ValidationResult validateFieldDeclaration(String line) {
-        ValidationResult initializedFieldResult = validateDeclaration(line, false);
-        if (initializedFieldResult.isValid()) {
-            return initializedFieldResult;
-        }
-
-        return validateUninitializedFieldDeclaration(line);
-    }
-
-    private ValidationResult validateDeclaration(String line, boolean rememberVariable){
-        if(line == null || line.isBlank()){
-            return ValidationResult.failure("Empty variable declaration");
-        }
-        line = line.trim();
-        if(!line.endsWith(";")){
-            return ValidationResult.failure("Missing ; at the end of the line: " + line);
-        }
-        line = line.substring(0, line.length()-1);
-        String[] words = line.trim().split("\\s+");
-        if(words.length != 4)
-            return ValidationResult.failure("Not Enough words in the code OR extra words in line: " + line);
-        if(!words[2].equals("=")){
-            return ValidationResult.failure("Missing = in the line: " + line);
-        }
-        if(!validVarName(words[1], rememberVariable)){ return ValidationResult.failure("Not valid Variable name in the line: " + line); }
-        switch(words[0]){
-            case "int":
-                if(!validateInteger(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "int", words[3], rememberVariable);
-                return ValidationResult.success("Successful Integer Declaration");
-            case "double":
-                if(!validateDouble(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "double", words[3], rememberVariable);
-                return ValidationResult.success("Successful Double Declaration");
-            case "char":
-                if(!validateChar(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "char", words[3], rememberVariable);
-                return ValidationResult.success("Successful Char Declaration");
-            case "String":
-                if(!validateString(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "String", words[3], rememberVariable);
-                return ValidationResult.success("Successful String Declaration");
-            case "boolean":
-                if(!validateBoolean(words[3])){ return ValidationResult.failure("Not a valid Integer the line: " + line); }
-                rememberVariable(words[1], "boolean", words[3], rememberVariable);
-                return ValidationResult.success("Successful Boolean Declaration");
-            default:
-                return ValidationResult.failure("Not a valid TYPE in line: " + line);
-        }
-    }
-    private boolean validVarName(String name){
-        return validVarName(name, true);
-    }
-
-    private boolean validVarName(String name, boolean checkExistingVariable){
-        if(name == null || !name.matches("[A-Za-z_$][A-Za-z0-9_$]*")){
-            return false;
-        }
-        if(checkExistingVariable && variables.containsKey(name)){
-            return  false;
-        }
-
-        return !INVALID_WORDS.contains(name);
-
-    }
-    private ValidationResult validateUninitializedFieldDeclaration(String line) {
-        if(line == null || line.isBlank()){
+        if (line == null || line.isBlank()) {
             return ValidationResult.failure("Empty field declaration");
         }
-        line = line.trim();
-        if(!line.endsWith(";")){
-            return ValidationResult.failure("Missing ; at the end of the field: " + line);
+        Optional<ClassOrInterfaceDeclaration> wrapperClass = parseFieldWrapper(line);
+        if (wrapperClass.isEmpty() || wrapperClass.get().getMembers().size() != 1) {
+            return ValidationResult.failure("Invalid field declaration: " + line.trim());
         }
-        line = line.substring(0, line.length()-1);
-        String[] words = line.trim().split("\\s+");
-        if(words.length != 2){
-            return ValidationResult.failure("Invalid field declaration: " + line);
+        if (!(wrapperClass.get().getMembers().get(0) instanceof FieldDeclaration field)) {
+            return ValidationResult.failure("Invalid field declaration: " + line.trim());
         }
-        if(!VALID_TYPES.contains(words[0])){
-            return ValidationResult.failure("Not a valid field type: " + line);
+
+        return validateField(field);
+    }
+
+    private ValidationResult validateDeclaration(String line, boolean rememberVariable) {
+        if (line == null || line.isBlank()) {
+            return ValidationResult.failure("Empty variable declaration");
         }
-        if(!validVarName(words[1], false)){
-            return ValidationResult.failure("Not a valid field name: " + line);
+
+        Optional<Statement> statement = JavaSyntaxValidator.parseStatementAst(line);
+        if (statement.isEmpty() || !statement.get().isExpressionStmt()) {
+            return ValidationResult.failure("That is not a variable declaration.");
+        }
+
+        Expression expression = statement.get().asExpressionStmt().getExpression();
+        if (!expression.isVariableDeclarationExpr()) {
+            return ValidationResult.failure("That is not a variable declaration.");
+        }
+
+        VariableDeclarationExpr declaration = expression.asVariableDeclarationExpr();
+        if (declaration.getVariables().size() != 1) {
+            return ValidationResult.failure("Declare one variable at a time.");
+        }
+
+        VariableDeclarator variable = declaration.getVariables().get(0);
+        if (variable.getInitializer().isEmpty()) {
+            return ValidationResult.failure("The variable needs an initial value.");
+        }
+
+        return validateVariable(variable, rememberVariable);
+    }
+
+    private ValidationResult validateField(FieldDeclaration field) {
+        if (field.getVariables().size() != 1) {
+            return ValidationResult.failure("Declare one field at a time.");
+        }
+
+        VariableDeclarator variable = field.getVariables().get(0);
+        if (!isValidVariableName(variable.getNameAsString(), false)) {
+            return ValidationResult.failure("Not a valid field name: " + variable.getNameAsString());
+        }
+        if (variable.getInitializer().isPresent()) {
+            Optional<ExpressionValue> value = EducationalExpressionEvaluator.evaluate(variable.getInitializer().get());
+            if (isSupportedValueType(variable.getType().asString()) && value.isEmpty()) {
+                return ValidationResult.failure("Cannot evaluate the field value.");
+            }
+            if (value.isPresent() && !isCompatibleValue(variable.getType().asString(), value.get())) {
+                return ValidationResult.failure("Field value does not match the field type.");
+            }
         }
 
         return ValidationResult.success("Successful Field Declaration");
     }
+
+    private ValidationResult validateVariable(VariableDeclarator variable, boolean rememberVariable) {
+        String type = variable.getType().asString();
+        String name = variable.getNameAsString();
+        if (!isSupportedValueType(type)) {
+            return ValidationResult.failure("Not a valid TYPE in line: " + type);
+        }
+        if (!isValidVariableName(name, rememberVariable)) {
+            return ValidationResult.failure("Not valid Variable name in the line: " + name);
+        }
+
+        Optional<ExpressionValue> value = EducationalExpressionEvaluator.evaluate(variable.getInitializer().orElseThrow());
+        if (value.isEmpty()) {
+            return ValidationResult.failure("Cannot evaluate the value in the declaration.");
+        }
+        if (!isCompatibleValue(type, value.get())) {
+            return ValidationResult.failure("Value does not match declared type.");
+        }
+
+        rememberVariable(name, type, value.get().value(), rememberVariable);
+        return ValidationResult.success("Successful " + type + " Declaration");
+    }
+
+    private Optional<ClassOrInterfaceDeclaration> parseFieldWrapper(String line) {
+        return JavaSyntaxValidator.parseClassDeclarationAst("class Temp { " + line.trim() + " }")
+                .filter(compilationUnit -> compilationUnit.getTypes().size() == 1)
+                .map(compilationUnit -> compilationUnit.getType(0))
+                .filter(type -> type instanceof ClassOrInterfaceDeclaration)
+                .map(type -> (ClassOrInterfaceDeclaration) type);
+    }
+
     private void rememberVariable(String name, String type, String value, boolean rememberVariable) {
-        if(rememberVariable){
+        if (rememberVariable) {
             variables.putIfAbsent(name, new VariableData(type, value));
         }
     }
-    private boolean validateInteger(String value){
-        char[] chars = value.toCharArray();
-        if(chars[0] == '-'){
-            chars =  Arrays.copyOfRange(chars, 1, chars.length);
-        }
-        for(Character c : chars){
-            if(!Character.isDigit(c)){
-                return false;
-            }
-        }
-        return true;
+
+    static boolean isSupportedValueType(String type) {
+        return VALID_TYPES.contains(type);
     }
-    private boolean validateDouble(String value){
-        if(!value.contains(".")) return false;
-        if(value.split("\\.").length != 2) return false;
-        value = value.replace(".","");
-        char[] chars = value.toCharArray();
-        if(chars[0] == '-'){
-            chars =  Arrays.copyOfRange(chars, 1, chars.length);
+
+    static boolean isCompatibleValue(String declaredType, ExpressionValue value) {
+        return switch (declaredType) {
+            case "int" -> value.type().equals("int");
+            case "double" -> value.type().equals("int") || value.type().equals("double");
+            case "char" -> value.type().equals("char");
+            case "String" -> value.type().equals("String");
+            case "boolean" -> value.type().equals("boolean");
+            default -> true;
+        };
+    }
+
+    static boolean isValidVariableName(String name, boolean checkExistingVariable) {
+        getInstance();
+        if (name == null || !name.matches("[A-Za-z_$][A-Za-z0-9_$]*")) {
+            return false;
         }
-        for(Character c : chars){
-            if(!Character.isDigit(c)){
-                return false;
-            }
+        if (checkExistingVariable && variables.containsKey(name)) {
+            return false;
         }
-        return true;
+
+        return !INVALID_WORDS.contains(name);
     }
-    private boolean validateChar(String value){
-        if(value.startsWith("'") && value.endsWith("'")){
-            return value.length() == 3;
-        }
-        return false;
-    }
-    private boolean validateString(String value){
-        return value.startsWith("\"") && value.endsWith("\"");
-    }
-    private boolean validateBoolean(String value){
-        return value.equals("true") || value.equals("false");
-    }
+
     public static void resetVariables() {
         getInstance();
         variables.clear();

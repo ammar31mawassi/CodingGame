@@ -16,6 +16,7 @@ class IfElsePrintValidatorTest {
                 } else { System.out.println ("failed");
                 }
                 """).isValid());
+        assertTrue(validator.validate("if(grade>x) System.out.println(\"passed\"); else System.out.println(\"failed\");").isValid());
     }
 
     @Test

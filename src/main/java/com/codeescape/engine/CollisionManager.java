@@ -5,6 +5,7 @@ import com.codeescape.model.ChestReward;
 import com.codeescape.model.Door;
 import com.codeescape.model.Inventory;
 import com.codeescape.model.Player;
+import com.codeescape.model.ProgrammableObject;
 import com.codeescape.model.Room;
 import com.codeescape.model.Token;
 import com.codeescape.model.Wall;
@@ -18,6 +19,10 @@ public class CollisionManager {
 
     public boolean playerTouchesDoor(Player player, Door door) {
         return door.intersects(player);
+    }
+
+    public boolean playerTouchesProgrammableObject(Player player, ProgrammableObject programmableObject) {
+        return programmableObject.intersects(player);
     }
 
     public List<Token> handleTokenCollection(Player player, Room room, Inventory inventory) {
@@ -35,6 +40,15 @@ public class CollisionManager {
         for (Chest chest : room.getChests()) {
             if (!chest.isOpened() && chest.intersects(player)) {
                 return room.openChest(chest, inventory);
+            }
+        }
+        return null;
+    }
+
+    public ProgrammableObject findTouchedProgrammableObject(Player player, Room room) {
+        for (ProgrammableObject programmableObject : room.getProgrammableObjects()) {
+            if (!programmableObject.isActivated() && playerTouchesProgrammableObject(player, programmableObject)) {
+                return programmableObject;
             }
         }
         return null;

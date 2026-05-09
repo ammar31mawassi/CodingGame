@@ -50,6 +50,54 @@ class RoomTest {
         assertTrue(room.isHelperFound());
     }
 
+    @Test
+    void lockedChestsDoNotOpenUntilUnlocked() {
+        Chest chest = new Chest(0, 0, 20, 20, true);
+        Room room = new Room(
+                100,
+                100,
+                List.of(),
+                List.of(),
+                List.of(chest),
+                List.of(ChestReward.code("key")),
+                null,
+                new Door(90, 0, 10, 10),
+                puzzle
+        );
+        Inventory inventory = new Inventory();
+
+        assertEquals(null, room.openChest(chest, inventory));
+        assertFalse(chest.isOpened());
+        assertTrue(inventory.getTokens().isEmpty());
+
+        chest.unlock();
+        ChestReward reward = room.openChest(chest, inventory);
+
+        assertTrue(chest.isOpened());
+        assertEquals("key", reward.getValue());
+        assertEquals(List.of("key"), inventory.getTokenValues());
+    }
+
+    @Test
+    void programmableObjectActivationUnlocksTargetChest() {
+        Chest chest = new Chest(0, 0, 20, 20, true);
+        ProgrammableObject programmableObject = new ProgrammableObject(
+                "ironChest",
+                "ironChest",
+                10,
+                10,
+                40,
+                20,
+                puzzle,
+                chest
+        );
+
+        programmableObject.activate();
+
+        assertTrue(programmableObject.isActivated());
+        assertFalse(chest.isLocked());
+    }
+
     private CodeValidator alwaysValid() {
         return code -> ValidationResult.success("ok");
     }

@@ -129,6 +129,56 @@ public class MazeCreator {
                 }
             }
         }
+        walls.addAll(createBoundaryWalls(columns, rows, originX, originY, cellWidth, cellHeight, wallThickness));
+        return walls;
+    }
+
+    private List<Wall> createBoundaryWalls(
+            int columns,
+            int rows,
+            double originX,
+            double originY,
+            double cellWidth,
+            double cellHeight,
+            double wallThickness
+    ) {
+        List<Wall> walls = new ArrayList<>();
+        double totalWidth = columns * cellWidth;
+        double totalHeight = rows * cellHeight;
+        double halfThickness = wallThickness / 2.0;
+
+        walls.add(new Wall(
+                originX + cellWidth,
+                originY - halfThickness,
+                totalWidth - cellWidth,
+                wallThickness
+        ));
+        walls.add(new Wall(
+                originX - halfThickness,
+                originY + cellHeight,
+                wallThickness,
+                totalHeight - cellHeight
+        ));
+        walls.add(new Wall(
+                originX,
+                originY + totalHeight - halfThickness,
+                totalWidth,
+                wallThickness
+        ));
+
+        int exitRow = rows / 2;
+        double rightWallX = originX + totalWidth - halfThickness;
+        double upperRightWallHeight = exitRow * cellHeight;
+        if (upperRightWallHeight > 0) {
+            walls.add(new Wall(rightWallX, originY, wallThickness, upperRightWallHeight));
+        }
+
+        double lowerRightWallY = originY + (exitRow + 1) * cellHeight;
+        double lowerRightWallHeight = totalHeight - (exitRow + 1) * cellHeight;
+        if (lowerRightWallHeight > 0) {
+            walls.add(new Wall(rightWallX, lowerRightWallY, wallThickness, lowerRightWallHeight));
+        }
+
         return walls;
     }
 
@@ -155,11 +205,12 @@ public class MazeCreator {
 
         int extraIndex = 0;
         while (chests.size() < chestCount) {
-            int column = extraIndex % columns;
-            int row = extraIndex / columns;
+            int cellIndex = extraIndex % (columns * rows);
+            int column = cellIndex % columns;
+            int row = cellIndex / columns;
             chests.add(new Chest(
                     originX + column * cellWidth + 18,
-                    originY + rows * cellHeight + 18 + row * 46,
+                    originY + row * cellHeight + 18,
                     46,
                     34
             ));

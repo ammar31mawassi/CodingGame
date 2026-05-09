@@ -209,7 +209,7 @@ public class CodeBuilderView {
 
         StringBuilder code = new StringBuilder();
         String previousToken = "";
-        Set<String> noSpaceBefore = Set.of(")", ",");
+        Set<String> noSpaceBefore = Set.of(")", ",", ".");
 
         for (int i = 0; i < selectedTokens.size(); i++) {
             String token = selectedTokens.get(i);
@@ -220,6 +220,8 @@ public class CodeBuilderView {
             } else if (";".equals(token)) {
                 code.append(token);
             } else if (noSpaceBefore.contains(token)) {
+                code.append(token);
+            } else if (".".equals(previousToken)) {
                 code.append(token);
             } else if ("}".equals(token)) {
                 if (!"{".equals(previousToken)) {

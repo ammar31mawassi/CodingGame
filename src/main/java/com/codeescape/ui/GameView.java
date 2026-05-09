@@ -9,6 +9,7 @@ import com.codeescape.model.Door;
 import com.codeescape.model.Level;
 import com.codeescape.model.MultipleChoiceQuestion;
 import com.codeescape.model.Player;
+import com.codeescape.model.ProgrammableObject;
 import com.codeescape.model.Room;
 import com.codeescape.model.Token;
 import com.codeescape.model.TokenDescriptions;
@@ -78,8 +79,10 @@ public class GameView {
     private enum ModalType {
         GOAL,
         TERMINAL,
+        OBJECT_TERMINAL,
         CHALLENGE,
-        TUTORIAL
+        TUTORIAL,
+        PAUSE
     }
 
     private final GameApp app;
@@ -98,11 +101,13 @@ public class GameView {
     private Parent activeModal;
     private ModalType activeModalType;
     private CodeBuilderView activeCodeBuilderView;
+    private ProgrammableObject activeProgrammableObject;
     private Image javaLifeImage;
     private Image bugLifeImage;
     private AnimationTimer movementTimer;
     private long lastFrameTime;
     private boolean wasTouchingTerminal;
+    private boolean wasTouchingProgrammableObject;
 
     public GameView(GameApp app, GameState gameState) {
         this.app = app;
@@ -163,7 +168,9 @@ public class GameView {
         gamePane.setPrefSize(Constants.ROOM_WIDTH, Constants.ROOM_HEIGHT);
         gamePane.setMinSize(Constants.ROOM_WIDTH, Constants.ROOM_HEIGHT);
         gamePane.setMaxSize(Constants.ROOM_WIDTH, Constants.ROOM_HEIGHT);
-        gamePane.getStyleClass().add("game-room");
+        if (!gamePane.getStyleClass().contains("game-room")) {
+            gamePane.getStyleClass().add("game-room");
+        }
 
         addRoomFloor();
         addWalls();
@@ -171,6 +178,7 @@ public class GameView {
         addChallengeDoor();
         addTerminal();
         addChests();
+        addProgrammableObjects();
         addTokens();
         addPlayer();
         addHardModeDarkness();
@@ -189,6 +197,11 @@ public class GameView {
             }
             if (event.getCode() == KeyCode.ESCAPE && inventoryPanel != null) {
                 hideInventoryPanel();
+                event.consume();
+                return;
+            }
+            if (event.getCode() == KeyCode.ESCAPE) {
+                showPauseMenu();
                 event.consume();
                 return;
             }
@@ -285,6 +298,10 @@ public class GameView {
             player.setPosition(previousX, previousY);
         }
         if (handleChallengeDoorCollision(player, previousX, previousY)) {
+            renderRoom();
+            return;
+        }
+        if (maybeOpenProgrammableObjectTerminal()) {
             renderRoom();
             return;
         }
@@ -439,6 +456,45 @@ public class GameView {
         wasTouchingTerminal = gameState.getPlayer().intersects(terminalX(), terminalY(), TERMINAL_WIDTH, TERMINAL_HEIGHT);
     }
 
+    private boolean maybeOpenProgrammableObjectTerminal() {
+        ProgrammableObject touchedObject = collisionManager.findTouchedProgrammableObject(
+                gameState.getPlayer(),
+                gameState.getCurrentLevel().getRoom()
+        );
+        boolean touchingObject = touchedObject != null;
+        if (touchingObject && !wasTouchingProgrammableObject) {
+            openProgrammableObjectTerminal(touchedObject);
+            wasTouchingProgrammableObject = true;
+            return true;
+        }
+
+        wasTouchingProgrammableObject = touchingObject;
+        return false;
+    }
+
+    private void openProgrammableObjectTerminal(ProgrammableObject programmableObject) {
+        if (activeModal != null || programmableObject == null || programmableObject.isActivated()) {
+            return;
+        }
+
+        activeProgrammableObject = programmableObject;
+        activeCodeBuilderView = new CodeBuilderView(
+                gameState.getInventory(),
+                programmableObject.getPuzzle(),
+                true,
+                result -> {
+                    programmableObject.activate();
+                    closeModal();
+                    setPickupMessage(programmableObject.getDisplayName() + " unlocked!", "success-message");
+                    renderRoom();
+                },
+                result -> recordMistake()
+        );
+
+        Parent builder = activeCodeBuilderView.createView();
+        showModal(builder, 920, 620, ModalType.OBJECT_TERMINAL);
+    }
+
     private void showGoalWindow() {
         if (activeModal != null) {
             return;
@@ -530,6 +586,46 @@ public class GameView {
         return label;
     }
 
+    private void showPauseMenu() {
+        if (activeModal != null) {
+            return;
+        }
+
+        Label title = new Label("Paused");
+        title.getStyleClass().add("modal-title");
+
+        Button resumeButton = new Button("Resume");
+        resumeButton.getStyleClass().add("pixel-button");
+        resumeButton.setMaxWidth(Double.MAX_VALUE);
+        resumeButton.setOnAction(event -> closeModal());
+
+        Button mainMenuButton = new Button("Main Menu");
+        mainMenuButton.getStyleClass().add("pixel-button");
+        mainMenuButton.setMaxWidth(Double.MAX_VALUE);
+        mainMenuButton.setOnAction(event -> returnToMainMenuFromPause());
+
+        Button exitButton = new Button("Exit");
+        exitButton.getStyleClass().add("pixel-button");
+        exitButton.setMaxWidth(Double.MAX_VALUE);
+        exitButton.setOnAction(event -> exitFromPause());
+
+        VBox content = new VBox(14, title, resumeButton, mainMenuButton, exitButton);
+        content.setMaxWidth(360);
+        showModal(content, 420, 300, ModalType.PAUSE, false);
+    }
+
+    private void returnToMainMenuFromPause() {
+        stopMovementLoop();
+        closeModal();
+        app.showMainMenu();
+    }
+
+    private void exitFromPause() {
+        stopMovementLoop();
+        closeModal();
+        app.showExitThankYouAndClose();
+    }
+
     private void showLevelAdvice() {
         String advice = levelAdvice();
         if (!advice.isBlank()) {
@@ -547,6 +643,9 @@ public class GameView {
             case 3 -> "New: blue Helper tokens reveal extra hints.";
             case 4 -> "New: maze chests hide the pieces you need.";
             case 5 -> "New: question doors unlock extra room rewards.";
+            case 6 -> "New: classes group fields into a blueprint.";
+            case 7 -> "New: constructors prepare objects and methods make them act.";
+            case 8 -> "New: object terminals let code change map objects.";
             default -> "";
         };
     }
@@ -574,16 +673,23 @@ public class GameView {
     }
 
     private void showModal(Parent content, double width, double height, ModalType modalType) {
+        showModal(content, width, height, modalType, true);
+    }
+
+    private void showModal(Parent content, double width, double height, ModalType modalType, boolean showCloseButton) {
         hideInventoryPanel();
         pressedKeys.clear();
-        Button closeButton = new Button("X");
-        closeButton.getStyleClass().add("close-button");
-        closeButton.setOnAction(event -> closeModal());
+        VBox modal = new VBox(12);
+        if (showCloseButton) {
+            Button closeButton = new Button("X");
+            closeButton.getStyleClass().add("close-button");
+            closeButton.setOnAction(event -> closeModal());
 
-        HBox closeRow = new HBox(closeButton);
-        closeRow.setAlignment(Pos.TOP_LEFT);
-
-        VBox modal = new VBox(12, closeRow, content);
+            HBox closeRow = new HBox(closeButton);
+            closeRow.setAlignment(Pos.TOP_LEFT);
+            modal.getChildren().add(closeRow);
+        }
+        modal.getChildren().add(content);
         modal.setPadding(new Insets(16));
         modal.setMaxSize(width, height);
         modal.setPrefSize(width, height);
@@ -603,8 +709,11 @@ public class GameView {
             root.getChildren().remove(activeModal);
             activeModal = null;
             activeModalType = null;
-            if (closingModalType == ModalType.TERMINAL) {
+            if (closingModalType == ModalType.TERMINAL || closingModalType == ModalType.OBJECT_TERMINAL) {
                 activeCodeBuilderView = null;
+            }
+            if (closingModalType == ModalType.OBJECT_TERMINAL) {
+                activeProgrammableObject = null;
             }
             if (closingModalType == ModalType.TUTORIAL) {
                 gameState.markTutorialSeen();
@@ -668,15 +777,37 @@ public class GameView {
             chestTile.setLayoutY(chest.getY());
             chestTile.setPrefSize(chest.getWidth(), chest.getHeight());
             chestTile.getStyleClass().add("room-chest");
+            if (chest.isLocked()) {
+                chestTile.getStyleClass().add("room-chest-locked");
+            }
             if (chest.isOpened()) {
                 chestTile.getStyleClass().add("room-chest-open");
             }
 
-            Label mark = new Label(chest.isOpened() ? "" : "?");
+            Label mark = new Label(chest.isOpened() ? "" : chest.isLocked() ? "LOCK" : "?");
             mark.getStyleClass().add("room-chest-text");
             chestTile.getChildren().add(mark);
 
             gamePane.getChildren().add(chestTile);
+        }
+    }
+
+    private void addProgrammableObjects() {
+        for (ProgrammableObject programmableObject : gameState.getCurrentLevel().getRoom().getProgrammableObjects()) {
+            StackPane objectTile = new StackPane();
+            objectTile.setLayoutX(programmableObject.getX());
+            objectTile.setLayoutY(programmableObject.getY());
+            objectTile.setPrefSize(programmableObject.getWidth(), programmableObject.getHeight());
+            objectTile.getStyleClass().add("programmable-object");
+            if (programmableObject.isActivated()) {
+                objectTile.getStyleClass().add("programmable-object-active");
+            }
+
+            Label label = new Label(programmableObject.getDisplayName());
+            label.getStyleClass().add("programmable-object-text");
+            objectTile.getChildren().add(label);
+
+            gamePane.getChildren().add(objectTile);
         }
     }
 
@@ -1068,7 +1199,7 @@ public class GameView {
     private void restartAfterBugFailure() {
         stopMovementLoop();
         PauseTransition restartDelay = new PauseTransition(Duration.seconds(1.4));
-        restartDelay.setOnFinished(event -> app.startNewGame());
+        restartDelay.setOnFinished(event -> app.restartAfterBugFailure());
         restartDelay.play();
     }
 

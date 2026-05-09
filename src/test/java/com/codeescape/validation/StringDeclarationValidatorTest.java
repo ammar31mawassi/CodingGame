@@ -18,6 +18,7 @@ class StringDeclarationValidatorTest {
     @Test
     void acceptsStringDeclarationWithAnyValidVariableNameAndRequiredValue() {
         assertTrue(validator.validate("String name = \"Ammar\";").isValid());
+        assertTrue(validator.validate("String compact=\"Ammar\";").isValid());
         assertTrue(validator.validate("String age = \"Ammar\";").isValid());
         assertTrue(validator.validate("String grade = \"Ammar\";").isValid());
     }

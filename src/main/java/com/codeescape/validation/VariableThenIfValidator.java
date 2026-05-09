@@ -1,10 +1,6 @@
 package com.codeescape.validation;
 
-import java.util.regex.Pattern;
-
 public class VariableThenIfValidator implements CodeValidator {
-    private static final Pattern REQUIRED_DECLARATION = Pattern.compile("^int\\s+x\\s*=\\s*-?\\d+\\s*;$");
-
     private final VariableDeclarationValidator variableDeclarationValidator;
     private final IfStatementValidator ifStatementValidator;
     private final ConditionEvaluator conditionEvaluator;
@@ -35,13 +31,12 @@ public class VariableThenIfValidator implements CodeValidator {
             return ValidationResult.failure("Add an if-statement after the declaration.");
         }
 
-        if (!REQUIRED_DECLARATION.matcher(declaration).matches()) {
-            return ValidationResult.failure("Declare int x first.");
-        }
-
         ValidationResult declarationResult = variableDeclarationValidator.validate(declaration);
         if (!declarationResult.isValid()) {
             return declarationResult;
+        }
+        if (!VariableDeclarationValidator.checkNameOfVariable("x").equals("int")) {
+            return ValidationResult.failure("Declare int x first.");
         }
 
         ValidationResult ifResult = ifStatementValidator.validate(ifStatement);

@@ -14,6 +14,7 @@
         <maven.compiler.release>17</maven.compiler.release>
         <javafx.version>17.0.6</javafx.version>
         <junit.version>5.10.2</junit.version>
+        <javaparser.version>3.28.1</javaparser.version>
     </properties>
 
     <dependencies>
@@ -21,6 +22,11 @@
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.javaparser</groupId>
+            <artifactId>javaparser-core</artifactId>
+            <version>${javaparser.version}</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
