@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public final class TypedTokenUsageValidator {
     private TypedTokenUsageValidator() {
@@ -31,6 +32,30 @@ public final class TypedTokenUsageValidator {
         }
 
         return ValidationResult.success("Typed code uses collected tokens.");
+    }
+
+    public static Optional<List<Integer>> resolveTokenIndexes(String code, List<String> collectedTokens) {
+        List<String> typedTokens = tokenize(code);
+        if (typedTokens.isEmpty()) {
+            return Optional.of(List.of());
+        }
+
+        Map<String, List<Integer>> availableIndexes = new HashMap<>();
+        for (int index = 0; index < collectedTokens.size(); index++) {
+            availableIndexes.computeIfAbsent(collectedTokens.get(index), key -> new ArrayList<>()).add(index);
+        }
+
+        List<Integer> resolvedIndexes = new ArrayList<>();
+        for (String token : typedTokens) {
+            if (consumeTokenIndex(token, availableIndexes, resolvedIndexes)) {
+                continue;
+            }
+            if (!consumeDottedTokenPartIndexes(token, availableIndexes, resolvedIndexes)) {
+                return Optional.empty();
+            }
+        }
+
+        return Optional.of(resolvedIndexes);
     }
 
     private static boolean consumeToken(String token, Map<String, Integer> availableCounts) {
@@ -63,8 +88,11 @@ public final class TypedTokenUsageValidator {
         return true;
     }
 
-    static List<String> tokenize(String code) {
+    public static List<String> tokenize(String code) {
         List<String> tokens = new ArrayList<>();
+        if (code == null) {
+            return tokens;
+        }
         int index = 0;
 
         while (index < code.length()) {
@@ -162,5 +190,55 @@ public final class TypedTokenUsageValidator {
             }
         }
         return -1;
+    }
+
+    private static boolean consumeTokenIndex(
+            String token,
+            Map<String, List<Integer>> availableIndexes,
+            List<Integer> resolvedIndexes
+    ) {
+        List<Integer> indexes = availableIndexes.get(token);
+        if (indexes == null || indexes.isEmpty()) {
+            return false;
+        }
+
+        resolvedIndexes.add(indexes.remove(0));
+        return true;
+    }
+
+    private static boolean consumeDottedTokenPartIndexes(
+            String token,
+            Map<String, List<Integer>> availableIndexes,
+            List<Integer> resolvedIndexes
+    ) {
+        if (!token.contains(".")) {
+            return false;
+        }
+
+        Map<String, List<Integer>> trialIndexes = copyIndexMap(availableIndexes);
+        List<Integer> trialResolvedIndexes = new ArrayList<>(resolvedIndexes);
+        String[] parts = token.split("\\.", -1);
+        for (int index = 0; index < parts.length; index++) {
+            if (parts[index].isBlank() || !consumeTokenIndex(parts[index], trialIndexes, trialResolvedIndexes)) {
+                return false;
+            }
+            if (index < parts.length - 1 && !consumeTokenIndex(".", trialIndexes, trialResolvedIndexes)) {
+                return false;
+            }
+        }
+
+        availableIndexes.clear();
+        availableIndexes.putAll(trialIndexes);
+        resolvedIndexes.clear();
+        resolvedIndexes.addAll(trialResolvedIndexes);
+        return true;
+    }
+
+    private static Map<String, List<Integer>> copyIndexMap(Map<String, List<Integer>> source) {
+        Map<String, List<Integer>> copy = new HashMap<>();
+        for (Map.Entry<String, List<Integer>> entry : source.entrySet()) {
+            copy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+        }
+        return copy;
     }
 }

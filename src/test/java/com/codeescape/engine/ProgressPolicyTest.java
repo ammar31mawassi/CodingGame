@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProgressPolicyTest {
-    private static final int FINAL_LEVEL = 8;
+    private static final int FINAL_LEVEL = 19;
 
     @Test
     void noSaveStartsWithOnlyLevelOneUnlocked() {

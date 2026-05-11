@@ -2,6 +2,9 @@ package com.codeescape.model;
 
 public class Level {
     private final int levelNumber;
+    private final int stageNumber;
+    private final int stageLevelNumber;
+    private final String stageTitle;
     private final String name;
     private final String concept;
     private final String completionExplanation;
@@ -18,7 +21,24 @@ public class Level {
     }
 
     public Level(int levelNumber, String name, String concept, String completionExplanation, String goalHelper, Room room) {
+        this(levelNumber, 1, levelNumber, concept, name, concept, completionExplanation, goalHelper, room);
+    }
+
+    public Level(
+            int levelNumber,
+            int stageNumber,
+            int stageLevelNumber,
+            String stageTitle,
+            String name,
+            String concept,
+            String completionExplanation,
+            String goalHelper,
+            Room room
+    ) {
         this.levelNumber = levelNumber;
+        this.stageNumber = stageNumber;
+        this.stageLevelNumber = stageLevelNumber;
+        this.stageTitle = stageTitle == null ? "" : stageTitle;
         this.name = name;
         this.concept = concept;
         this.completionExplanation = completionExplanation;
@@ -28,6 +48,22 @@ public class Level {
 
     public int getLevelNumber() {
         return levelNumber;
+    }
+
+    public int getStageNumber() {
+        return stageNumber;
+    }
+
+    public int getStageLevelNumber() {
+        return stageLevelNumber;
+    }
+
+    public String getStageTitle() {
+        return stageTitle;
+    }
+
+    public String getDisplayId() {
+        return stageNumber + "-" + stageLevelNumber;
     }
 
     public String getName() {

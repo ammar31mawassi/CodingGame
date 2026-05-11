@@ -24,7 +24,7 @@ public class LevelCompleteView {
         Label message = new Label("Now to the next level.");
         message.getStyleClass().add("level-complete-message");
 
-        Label concept = new Label("Completed: " + completedLevel.getConcept());
+        Label concept = new Label("Completed " + completedLevel.getDisplayId() + ": " + completedLevel.getConcept());
         concept.getStyleClass().add("level-complete-concept");
 
         Label explanation = new Label(completedLevel.getCompletionExplanation());

@@ -1,6 +1,7 @@
 package com.codeescape.validation;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -55,5 +56,38 @@ class TypedTokenUsageValidatorTest {
         );
 
         assertTrue(result.isValid());
+    }
+
+    @Test
+    void resolvesTypedCodeToOwnedTokenIndexes() {
+        assertEquals(
+                List.of(0, 1, 2, 3, 4),
+                TypedTokenUsageValidator.resolveTokenIndexes(
+                        "String name = \"Ammar\";",
+                        List.of("String", "name", "=", "\"Ammar\"", ";")
+                ).orElseThrow()
+        );
+    }
+
+    @Test
+    void resolvesDuplicateTokensByConsumingSeparateIndexes() {
+        assertEquals(
+                List.of(0, 1, 2, 3, 4, 5, 6, 7),
+                TypedTokenUsageValidator.resolveTokenIndexes(
+                        "if (x == x) {}",
+                        List.of("if", "(", "x", "==", "x", ")", "{", "}")
+                ).orElseThrow()
+        );
+    }
+
+    @Test
+    void resolvesDottedTypedTokensToSeparateOwnedTokens() {
+        assertEquals(
+                List.of(0, 1, 2, 3, 4, 5),
+                TypedTokenUsageValidator.resolveTokenIndexes(
+                        "key.use();",
+                        List.of("key", ".", "use", "(", ")", ";")
+                ).orElseThrow()
+        );
     }
 }

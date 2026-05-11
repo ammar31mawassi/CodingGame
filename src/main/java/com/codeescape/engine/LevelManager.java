@@ -1,134 +1,196 @@
 package com.codeescape.engine;
 
-import com.codeescape.model.Door;
 import com.codeescape.model.Chest;
 import com.codeescape.model.ChestReward;
+import com.codeescape.model.Door;
 import com.codeescape.model.Level;
 import com.codeescape.model.MultipleChoiceQuestion;
-import com.codeescape.model.Puzzle;
 import com.codeescape.model.ProgrammableObject;
+import com.codeescape.model.Puzzle;
 import com.codeescape.model.Room;
 import com.codeescape.model.Token;
 import com.codeescape.model.TokenType;
-import com.codeescape.model.Wall;
 import com.codeescape.util.Constants;
+import com.codeescape.validation.CharDeclarationValidator;
 import com.codeescape.validation.ClassConstructorMethodValidator;
 import com.codeescape.validation.ClassFieldsValidator;
+import com.codeescape.validation.CodeValidator;
+import com.codeescape.validation.ForLoopValidator;
 import com.codeescape.validation.IfElsePrintValidator;
 import com.codeescape.validation.IfStatementValidator;
+import com.codeescape.validation.MethodDeclarationValidator;
 import com.codeescape.validation.ObjectCreateAndCallValidator;
 import com.codeescape.validation.ObjectFieldAssignmentValidator;
+import com.codeescape.validation.PrintStatementValidator;
 import com.codeescape.validation.StringDeclarationValidator;
 import com.codeescape.validation.VariableDeclarationValidator;
 import com.codeescape.validation.VariableThenIfValidator;
+import com.codeescape.validation.VariableThenPrintValidator;
+import com.codeescape.validation.WhileLoopValidator;
+import com.github.javaparser.ast.expr.BinaryExpr;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class LevelManager {
-    private final List<Level> levels = new ArrayList<>();
+    private static final String STAGE_1 = "Variables And Printing";
+    private static final String STAGE_2 = "If-Else Conditions";
+    private static final String STAGE_3 = "String, Char, And Functions";
+    private static final String STAGE_4 = "Loops";
+    private static final String STAGE_5 = "Classes";
+
+    private final List<LevelDefinition> levelDefinitions = new ArrayList<>();
     private int currentLevelIndex;
+    private Level currentLevel;
 
     public void loadLevels() {
-        levels.clear();
+        levelDefinitions.clear();
         currentLevelIndex = 0;
-        levels.add(createVariableLevel());
-        levels.add(createStringDeclarationLevel());
-        levels.add(createIfStatementLevel());
-        levels.add(createVariableThenIfLevel());
-        levels.add(createQuestionRoomLevel());
-        levels.add(createClassBlueprintLevel());
-        levels.add(createConstructorForgeLevel());
-        levels.add(createObjectLockLevel());
+        currentLevel = null;
+
+        add(this::createVariableLevel);
+        add(this::createPrintLevel);
+        add(this::createVariableThenPrintLevel);
+        add(this::createIfStatementLevel);
+        add(this::createVariableThenIfLevel);
+        add(this::createIfElsePrintLevel);
+        add(this::createGreaterEqualsBranchLevel);
+        add(this::createBooleanBranchLevel);
+        add(this::createStringDeclarationLevel);
+        add(this::createCharDeclarationLevel);
+        add(this::createPrintMethodLevel);
+        add(this::createReturnMethodLevel);
+        add(this::createWhileLoopLevel);
+        add(this::createForLoopIndexLevel);
+        add(this::createForLoopMessageLevel);
+        add(this::createWhileLoopLivesLevel);
+        add(this::createClassBlueprintLevel);
+        add(this::createConstructorForgeLevel);
+        add(this::createObjectLockLevel);
     }
 
     public Level getCurrentLevel() {
-        return levels.get(currentLevelIndex);
+        if (currentLevel == null) {
+            currentLevel = levelDefinitions.get(currentLevelIndex).create();
+        }
+        return currentLevel;
     }
 
     public List<Level> getLevels() {
-        return List.copyOf(levels);
+        return levelDefinitions.stream()
+                .map(LevelDefinition::create)
+                .toList();
     }
 
     public boolean hasNextLevel() {
-        return currentLevelIndex < levels.size() - 1;
+        return currentLevelIndex < levelDefinitions.size() - 1;
     }
 
     public Level goToNextLevel() {
         if (hasNextLevel()) {
             currentLevelIndex++;
         }
-        return getCurrentLevel();
+        currentLevel = levelDefinitions.get(currentLevelIndex).create();
+        return currentLevel;
     }
 
     public Level getLevel(int levelNumber) {
-        return levels.stream()
-                .filter(level -> level.getLevelNumber() == levelNumber)
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unknown level: " + levelNumber));
+        return levelDefinition(levelNumber).create();
     }
 
     public Level goToLevel(int levelNumber) {
-        for (int i = 0; i < levels.size(); i++) {
-            if (levels.get(i).getLevelNumber() == levelNumber) {
+        for (int i = 0; i < levelDefinitions.size(); i++) {
+            Level level = levelDefinitions.get(i).create();
+            if (level.getLevelNumber() == levelNumber) {
                 currentLevelIndex = i;
-                return getCurrentLevel();
+                currentLevel = level;
+                return currentLevel;
             }
         }
 
         throw new IllegalArgumentException("Unknown level: " + levelNumber);
     }
 
+    private void add(Supplier<Level> factory) {
+        levelDefinitions.add(new LevelDefinition(factory));
+    }
+
+    private LevelDefinition levelDefinition(int levelNumber) {
+        return levelDefinitions.stream()
+                .filter(definition -> definition.create().getLevelNumber() == levelNumber)
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Unknown level: " + levelNumber));
+    }
+
     private Level createVariableLevel() {
-        Puzzle puzzle = new Puzzle(
+        Puzzle puzzle = puzzle(
                 "Variables",
                 "Build a valid Java variable declaration.",
                 List.of("types", "variables", "assignment"),
                 VariableDeclarationValidator.getInstance()
         );
 
-        Room room = new Room(
-                Constants.ROOM_WIDTH,
-                Constants.ROOM_HEIGHT,
-                tokens("int", "x", "=", "5", ";"),
-                createExitDoor(),
-                puzzle
-        );
-
-        return new Level(
+        Room room = simpleRoom(tokens("int", "x", "=", "5", ";"), puzzle);
+        return level(
                 1,
+                1,
+                1,
+                STAGE_1,
                 "Variable Vault",
                 "Variable declarations",
-                "A variable declaration is TYPE var_name = var_value;. The type tells Java what kind of value the variable stores, so the value has to match that type. The name also has rules: it cannot be a reserved word like if or class, and it cannot reuse a variable name that already exists.",
+                "A variable declaration is TYPE name = value;. Java checks that the value matches the type.",
                 "Build: int x = 5;",
                 room
         );
     }
 
-    private Level createStringDeclarationLevel() {
-        Puzzle puzzle = new Puzzle(
-                "String Declaration",
-                "Build a valid String declaration statement.",
-                List.of("String variables", "literal values"),
-                new StringDeclarationValidator("\"Ammar\"")
+    private Level createPrintLevel() {
+        Puzzle puzzle = puzzle(
+                "Printing",
+                "Build a statement that prints \"Hello\".",
+                List.of("print statements"),
+                new PrintStatementValidator("\"Hello\"")
         );
 
-        List<Token> levelTokens = tokens("int", "String", "char", "age", "name", "grade", "=", "5", "\"Ammar\"", "'A'", ";");
-        levelTokens.add(specialToken("Goal", 74, Constants.ROOM_HEIGHT - 108, TokenType.GOAL));
+        Room room = simpleRoom(tokens("System.out.println", "(", "\"Hello\"", ")", ";", "print", "\"Hi\""), puzzle);
+        return level(
+                2,
+                1,
+                2,
+                STAGE_1,
+                "Print Hall",
+                "Printing",
+                "System.out.println sends a value to the output window.",
+                "Build: System.out.println(\"Hello\");",
+                room
+        );
+    }
 
-        Room room = new Room(
-                Constants.ROOM_WIDTH,
-                Constants.ROOM_HEIGHT,
-                levelTokens,
-                createExitDoor(),
-                puzzle
+    private Level createVariableThenPrintLevel() {
+        Puzzle puzzle = puzzle(
+                "Variable Output",
+                "Declare score as 10, then print score.",
+                List.of("variables", "printing"),
+                new VariableThenPrintValidator("int", "score")
         );
 
-        return new Level(2, "String Vault", "String declarations", room);
+        Room room = simpleRoom(tokens("int", "score", "=", "10", ";", "System.out.println", "(", "score", ")", ";"), puzzle);
+        return level(
+                3,
+                1,
+                3,
+                STAGE_1,
+                "Output Workshop",
+                "Variables and printing",
+                "A variable can be used after it is declared. Printing the name uses its stored value.",
+                "Hint: This solution has two statements: declare score, then print score.",
+                room
+        );
     }
 
     private Level createIfStatementLevel() {
-        Puzzle puzzle = new Puzzle(
+        Puzzle puzzle = puzzle(
                 "If Statements",
                 "Build a valid Java if-statement.",
                 List.of("conditions", "comparison operators", "blocks"),
@@ -139,33 +201,29 @@ public class LevelManager {
         levelTokens.add(specialToken("Goal", 74, Constants.ROOM_HEIGHT - 108, TokenType.GOAL));
         levelTokens.add(specialToken("Helper", 210, Constants.ROOM_HEIGHT - 108, TokenType.HELPER));
 
-        Room room = new Room(
-                Constants.ROOM_WIDTH,
-                Constants.ROOM_HEIGHT,
-                levelTokens,
-                createExitDoor(),
-                puzzle
-        );
-
-        return new Level(
-                3,
+        Room room = simpleRoom(levelTokens, puzzle);
+        return level(
+                4,
+                2,
+                1,
+                STAGE_2,
                 "Condition Chamber",
                 "If-statements",
-                "An if-statement lets Java choose whether to run a block of code. The condition goes inside parentheses, and the code that runs goes inside braces: if (condition) { }. When the condition is true, Java enters the block. When it is false, Java skips it.",
-                "Hint: Use if, parentheses, a comparison like x > 5, and braces for the block.",
+                "An if-statement runs its block only when the condition is true.",
+                "Hint: Use if, parentheses, a comparison like x > 5, and braces.",
                 room
         );
     }
 
     private Level createVariableThenIfLevel() {
-        Puzzle puzzle = new Puzzle(
+        Puzzle puzzle = puzzle(
                 "Variable and If",
                 "Declare a variable named x and then make a true if-statement using x.",
                 List.of("variables", "conditions", "if-statements"),
                 new VariableThenIfValidator()
         );
-        List<ChestReward> rewards = shuffledMazeRewards();
-        MazeCreator.MazeLayout mazeLayout = createTrainingMaze(rewards.size() + 1);
+        List<ChestReward> rewards = shuffledRewards(List.of("int", "x", "=", "5", ";", "if", "(", "x", ">", "3", ")", "{", "}"));
+        GridRoomBuilder.GridRoomLayout mazeLayout = RoomLayoutBuilder.gridTrainingMaze(rewards.size() + 1);
 
         Room room = new Room(
                 Constants.ROOM_WIDTH,
@@ -174,242 +232,342 @@ public class LevelManager {
                 mazeLayout.walls(),
                 mazeLayout.chests(),
                 rewards,
-                ChestReward.helper(),
+                ChestReward.goal(),
                 createExitDoor(),
                 puzzle
         );
 
-        return new Level(
-                4,
+        return level(
+                5,
+                2,
+                2,
+                STAGE_2,
                 "Logic Lock",
                 "Variables and if-statements",
                 "",
-                "Hint: The solution uses two lines. Declare x first, then use x in an if condition that evaluates to true.",
+                "Hint: The solution uses two statements. Declare x first, then compare x.",
                 room
         );
     }
 
-    private MazeCreator.MazeLayout createTrainingMaze(int chestCount) {
-        return new MazeCreator().create(
-                6,
-                3,
-                72,
-                78,
-                170,
-                158,
-                14,
-                chestCount,
-                404L
-        );
-    }
-
-    private Level createQuestionRoomLevel() {
-        Puzzle puzzle = new Puzzle(
+    private Level createIfElsePrintLevel() {
+        Puzzle puzzle = puzzle(
                 "If Else",
-                "Create an if-else statement: if grade is higher than 56, print \"passed\". Otherwise, print \"failed\".",
+                "Create an if-else statement: if grade is higher than x, print \"passed\". Otherwise, print \"failed\".",
                 List.of("if-else", "variables", "print statements"),
                 new IfElsePrintValidator()
         );
 
-        Room room = new Room(
-                Constants.ROOM_WIDTH,
-                Constants.ROOM_HEIGHT,
-                List.of(),
-                levelFiveWalls(),
-                levelFiveChests(),
-                shuffledLevelFiveRewards(),
-                ChestReward.helper(),
-                createExitDoor(),
-                levelFiveChallengeDoor(),
-                levelFiveQuestion(),
-                puzzle
-        );
-
-        return new Level(
-                5,
-                "Question Room",
-                "If-else statements",
-                "",
-                "Hint: The room question gave you x = 56.0. Use x in the condition instead of the number 56.",
-                room
-        );
-    }
-
-    private List<Token> tokens(String... values) {
-        List<Token> tokens = new ArrayList<>();
-        for (int i = 0; i < values.length; i++) {
-            double x = 118 + (i % 6) * 132;
-            double y = 118 + (i / 6) * 78;
-            tokens.add(new Token(values[i], x, y, tokenWidth(values[i]), 28));
-        }
-        return tokens;
-    }
-
-    private double tokenWidth(String value) {
-        return Math.max(46, value.length() * 11 + 24);
-    }
-
-    private Token specialToken(String value, double x, double y, TokenType type) {
-        return new Token(value, x, y, tokenWidth(value), 28, type);
-    }
-
-    private List<ChestReward> shuffledMazeRewards() {
-        List<ChestReward> rewards = new ArrayList<>();
-        for (String value : List.of("int", "x", "=", "5", ";", "if", "(", "x", ">", "3", ")", "{", "}", "String", "name", "\"ammar\"", ";")) {
-            rewards.add(ChestReward.code(value));
-        }
-        rewards.add(ChestReward.goal());
-        Collections.shuffle(rewards);
-        return rewards;
-    }
-
-    private List<Chest> mazeChests() {
-        return List.of(
-                new Chest(82, 82, 46, 34),
-                new Chest(260, 78, 46, 34),
-                new Chest(430, 88, 46, 34),
-                new Chest(610, 78, 46, 34),
-                new Chest(780, 95, 46, 34),
-                new Chest(1060, 80, 46, 34),
-                new Chest(88, 285, 46, 34),
-                new Chest(260, 310, 46, 34),
-                new Chest(430, 290, 46, 34),
-                new Chest(610, 360, 46, 34),
-                new Chest(780, 310, 46, 34),
-                new Chest(1060, 335, 46, 34),
-                new Chest(92, 545, 46, 34),
-                new Chest(270, 535, 46, 34),
-                new Chest(440, 540, 46, 34),
-                new Chest(620, 535, 46, 34),
-                new Chest(790, 545, 46, 34),
-                new Chest(960, 540, 46, 34),
-                new Chest(1090, 540, 46, 34)
-        );
-    }
-
-    private List<Wall> mazeWalls() {
-        return List.of(
-                new Wall(180, 36, 14, 200),
-                new Wall(180, 310, 14, 220),
-                new Wall(340, 140, 14, 260),
-                new Wall(500, 36, 14, 210),
-                new Wall(500, 330, 14, 190),
-                new Wall(670, 120, 14, 310),
-                new Wall(840, 36, 14, 240),
-                new Wall(840, 360, 14, 165),
-                new Wall(1000, 170, 14, 250),
-                new Wall(180, 220, 170, 14),
-                new Wall(340, 400, 180, 14),
-                new Wall(500, 245, 180, 14),
-                new Wall(670, 430, 180, 14),
-                new Wall(840, 280, 170, 14)
-        );
-    }
-
-    private List<ChestReward> shuffledLevelFiveRewards() {
-        List<ChestReward> rewards = new ArrayList<>();
-        for (String value : List.of(
+        List<ChestReward> rewards = shuffledRewards(List.of(
                 "if", "(", "grade", ">", ")", "{",
                 "System.out.println", "(", "\"passed\"", ")", ";", "}",
                 "else", "{", "System.out.println", "(", "\"failed\"", ")", ";", "}",
                 "<", "=="
-        )) {
-            rewards.add(ChestReward.code(value));
-        }
-        rewards.add(ChestReward.goal());
-        Collections.shuffle(rewards);
-        return rewards;
-    }
-
-    private List<Chest> levelFiveChests() {
-        return List.of(
-                new Chest(250, 74, 46, 34),
-                new Chest(430, 82, 46, 34),
-                new Chest(600, 78, 46, 34),
-                new Chest(790, 82, 46, 34),
-                new Chest(1000, 78, 46, 34),
-                new Chest(252, 175, 46, 34),
-                new Chest(460, 175, 46, 34),
-                new Chest(600, 175, 46, 34),
-                new Chest(1000, 175, 46, 34),
-                new Chest(230, 282, 46, 34),
-                new Chest(600, 282, 46, 34),
-                new Chest(760, 282, 46, 34),
-                new Chest(960, 282, 46, 34),
-                new Chest(455, 520, 46, 34),
-                new Chest(610, 520, 46, 34),
-                new Chest(740, 520, 46, 34),
-                new Chest(980, 520, 46, 34),
-                new Chest(1100, 520, 46, 34),
-                new Chest(960, 330, 46, 34),
-                new Chest(1110, 160, 46, 34),
-                new Chest(130, 390, 46, 34),
-                new Chest(230, 440, 46, 34),
-                new Chest(315, 390, 46, 34),
-                new Chest(190, 520, 46, 34)
-        );
-    }
-
-    private List<Wall> levelFiveWalls() {
-        List<Wall> walls = new ArrayList<>();
-        walls.addAll(List.of(
-                new Wall(150, 36, 14, 220),
-                new Wall(150, 250, 210, 14),
-                new Wall(520, 36, 14, 210),
-                new Wall(520, 300, 14, 210),
-                new Wall(700, 120, 220, 14),
-                new Wall(700, 120, 14, 280),
-                new Wall(920, 120, 14, 190),
-                new Wall(830, 390, 220, 14),
-                new Wall(1050, 220, 14, 300)
         ));
-        walls.addAll(levelFiveRoomWalls());
-        return walls;
-    }
+        GridRoomBuilder.GridRoomLayout mazeLayout = RoomLayoutBuilder.gridLockedRoomMaze(rewards.size() + 1, 4);
+        Room room = new Room(
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
+                List.of(),
+                mazeLayout.walls(),
+                mazeLayout.chests(),
+                rewards,
+                ChestReward.goal(),
+                createExitDoor(),
+                mazeLayout.challengeDoor(),
+                new MultipleChoiceQuestion(
+                        "Fill in the blank in this code:",
+                        "_____ x = 56.0;",
+                        List.of("double", "int", "String", "boolean"),
+                        "double",
+                        ChestReward.code("x")
+                ),
+                puzzle
+        );
 
-    private List<Wall> levelFiveRoomWalls() {
-        return List.of(
-                new Wall(80, 330, 130, 14),
-                new Wall(290, 330, 104, 14),
-                new Wall(80, 330, 14, 254),
-                new Wall(380, 330, 14, 254),
-                new Wall(80, 570, 314, 14)
+        return level(
+                6,
+                2,
+                3,
+                STAGE_2,
+                "Question Room",
+                "If-else statements",
+                "",
+                "Hint: The room question gives you x. Use grade > x.",
+                room
         );
     }
 
-    private Door levelFiveChallengeDoor() {
-        return new Door(210, 330, 80, 14);
+    private Level createGreaterEqualsBranchLevel() {
+        Puzzle puzzle = puzzle(
+                "Greater Or Equal",
+                "If score is at least pass, print \"unlocked\". Otherwise, print \"locked\".",
+                List.of("if-else", "greater-or-equal"),
+                new IfElsePrintValidator("score", "pass", BinaryExpr.Operator.GREATER_EQUALS, "unlocked", "locked")
+        );
+
+        Room room = simpleRoom(tokens(
+                "if", "(", "score", ">=", "pass", ")", "{",
+                "System.out.println", "(", "\"unlocked\"", ")", ";", "}",
+                "else", "{", "System.out.println", "(", "\"locked\"", ")", ";", "}",
+                ">", "=="
+        ), puzzle);
+        return level(
+                7,
+                2,
+                4,
+                STAGE_2,
+                "Threshold Gate",
+                "Comparison branches",
+                ">= means greater than or equal to, which includes the exact passing value.",
+                "Hint: The true branch prints unlocked; the else branch prints locked.",
+                room
+        );
     }
 
-    private MultipleChoiceQuestion levelFiveQuestion() {
-        return new MultipleChoiceQuestion(
-                "Fill in the blank in this code:",
-                "_____ x = 56.0;",
-                List.of("double", "int", "String", "boolean"),
-                "double",
-                ChestReward.code("x")
+    private Level createBooleanBranchLevel() {
+        Puzzle puzzle = puzzle(
+                "Boolean Branch",
+                "If hasKey is true, print \"open\". Otherwise, print \"closed\".",
+                List.of("if-else", "booleans"),
+                new IfElsePrintValidator("hasKey", "true", BinaryExpr.Operator.EQUALS, "open", "closed")
+        );
+
+        Room room = simpleRoom(tokens(
+                "if", "(", "hasKey", "==", "true", ")", "{",
+                "System.out.println", "(", "\"open\"", ")", ";", "}",
+                "else", "{", "System.out.println", "(", "\"closed\"", ")", ";", "}",
+                "false", "="
+        ), puzzle);
+        return level(
+                8,
+                2,
+                5,
+                STAGE_2,
+                "Key Branch",
+                "Boolean if-else",
+                "Boolean values are already true or false, so they fit directly into conditions.",
+                "Hint: Compare hasKey to true for this puzzle.",
+                room
+        );
+    }
+
+    private Level createStringDeclarationLevel() {
+        Puzzle puzzle = puzzle(
+                "String Declaration",
+                "Build a valid String declaration statement.",
+                List.of("String variables", "literal values"),
+                new StringDeclarationValidator("\"Ammar\"")
+        );
+
+        List<Token> levelTokens = tokens("int", "String", "char", "age", "name", "grade", "=", "5", "\"Ammar\"", "'A'", ";");
+        levelTokens.add(specialToken("Goal", 74, Constants.ROOM_HEIGHT - 108, TokenType.GOAL));
+        Room room = simpleRoom(levelTokens, puzzle);
+        return level(
+                9,
+                3,
+                1,
+                STAGE_3,
+                "String Vault",
+                "String declarations",
+                "A String stores text inside double quotes.",
+                "Build: String name = \"Ammar\";",
+                room
+        );
+    }
+
+    private Level createCharDeclarationLevel() {
+        Puzzle puzzle = puzzle(
+                "Char Declaration",
+                "Build a char declaration that stores 'A'.",
+                List.of("char variables", "literal values"),
+                new CharDeclarationValidator("'A'")
+        );
+
+        Room room = simpleRoom(tokens("char", "grade", "=", "'A'", ";", "String", "\"A\"", "\"Ammar\""), puzzle);
+        return level(
+                10,
+                3,
+                2,
+                STAGE_3,
+                "Char Key",
+                "Char declarations",
+                "A char stores one character inside single quotes.",
+                "Build: char grade = 'A';",
+                room
+        );
+    }
+
+    private Level createPrintMethodLevel() {
+        Puzzle puzzle = puzzle(
+                "Print Method",
+                "Build a method named greet that prints \"Hi\".",
+                List.of("methods", "printing"),
+                MethodDeclarationValidator.printMethod("void", "greet", "\"Hi\"")
+        );
+
+        Room room = simpleRoom(tokens("void", "greet", "(", ")", "{", "System.out.println", "(", "\"Hi\"", ")", ";", "}", "return"), puzzle);
+        return level(
+                11,
+                3,
+                3,
+                STAGE_3,
+                "Function Hall",
+                "Void methods",
+                "A void method performs an action and does not return a value.",
+                "Build: void greet() { System.out.println(\"Hi\"); }",
+                room
+        );
+    }
+
+    private Level createReturnMethodLevel() {
+        Puzzle puzzle = puzzle(
+                "Return Method",
+                "Build a method named getName that returns \"Ammar\".",
+                List.of("methods", "return values"),
+                MethodDeclarationValidator.returnMethod("String", "getName", "\"Ammar\"")
+        );
+
+        Room room = simpleRoom(tokens("String", "getName", "(", ")", "{", "return", "\"Ammar\"", ";", "}", "void", "\"Hi\""), puzzle);
+        return level(
+                12,
+                3,
+                4,
+                STAGE_3,
+                "Return Room",
+                "Return methods",
+                "A non-void method sends a value back with return.",
+                "Build: String getName() { return \"Ammar\"; }",
+                room
+        );
+    }
+
+    private Level createWhileLoopLevel() {
+        Puzzle puzzle = puzzle(
+                "While Loop",
+                "Build a while loop that runs while count is less than 3 and increases count.",
+                List.of("while loops", "increments"),
+                new WhileLoopValidator("count", "3")
+        );
+
+        Room room = simpleRoom(tokens("while", "(", "count", "<", "3", ")", "{", "count", "++", ";", "}", ">", "="), puzzle);
+        return level(
+                13,
+                4,
+                1,
+                STAGE_4,
+                "While Maze",
+                "While loops",
+                "A while loop repeats while its condition stays true.",
+                "Build: while (count < 3) { count++; }",
+                room
+        );
+    }
+
+    private Level createForLoopIndexLevel() {
+        Puzzle puzzle = puzzle(
+                "For Loop",
+                "Build a for loop that prints i while i counts from 0 to 2.",
+                List.of("for loops", "printing"),
+                new ForLoopValidator("i", "3", "i")
+        );
+
+        Room room = simpleRoom(tokens(
+                "for", "(", "int", "i", "=", "0", ";", "i", "<", "3", ";", "i", "++", ")",
+                "{", "System.out.println", "(", "i", ")", ";", "}"
+        ), puzzle);
+        return level(
+                14,
+                4,
+                2,
+                STAGE_4,
+                "Counter Circuit",
+                "For loops",
+                "A for loop keeps setup, condition, and update in one header.",
+                "Hint: Start i at 0, loop while i < 3, then print i.",
+                room
+        );
+    }
+
+    private Level createForLoopMessageLevel() {
+        Puzzle puzzle = puzzle(
+                "Loop Message",
+                "Build a for loop that prints \"Loop\" twice.",
+                List.of("for loops", "string output"),
+                new ForLoopValidator("i", "2", "\"Loop\"")
+        );
+
+        Room room = simpleRoom(tokens(
+                "for", "(", "int", "i", "=", "0", ";", "i", "<", "2", ";", "i", "++", ")",
+                "{", "System.out.println", "(", "\"Loop\"", ")", ";", "}", "\"Done\""
+        ), puzzle);
+        return level(
+                15,
+                4,
+                3,
+                STAGE_4,
+                "Repeat Printer",
+                "Looped printing",
+                "The same statement can run many times inside a loop body.",
+                "Build a for loop that prints \"Loop\".",
+                room
+        );
+    }
+
+    private Level createWhileLoopLivesLevel() {
+        Puzzle puzzle = puzzle(
+                "Loop Counter",
+                "Build a while loop that increases lives while lives is less than 5.",
+                List.of("while loops", "counter updates"),
+                new WhileLoopValidator("lives", "5")
+        );
+
+        List<ChestReward> rewards = shuffledRewards(List.of("while", "(", "lives", "<", "5", ")", "{", "lives", "++", ";", "}"));
+        GridRoomBuilder.GridRoomLayout mazeLayout = RoomLayoutBuilder.gridTrainingMaze(rewards.size() + 1);
+        Room room = new Room(
+                Constants.ROOM_WIDTH,
+                Constants.ROOM_HEIGHT,
+                List.of(),
+                mazeLayout.walls(),
+                mazeLayout.chests(),
+                rewards,
+                ChestReward.goal(),
+                createExitDoor(),
+                puzzle
+        );
+        return level(
+                16,
+                4,
+                4,
+                STAGE_4,
+                "Loop Labyrinth",
+                "While loop counters",
+                "Updating the counter is what lets a while loop eventually stop.",
+                "Hint: Use lives++ inside the loop body.",
+                room
         );
     }
 
     private Level createClassBlueprintLevel() {
-        Puzzle puzzle = new Puzzle(
+        Puzzle puzzle = puzzle(
                 "Class Blueprint",
                 "Build a class named Item with a String name field and an int power field.",
                 List.of("classes", "fields"),
                 new ClassFieldsValidator()
         );
 
+        GridRoomBuilder.GridRoomLayout mazeLayout = RoomLayoutBuilder.gridLockedRoomMaze(1, 1);
         List<Token> levelTokens = tokens("class", "Item", "{", "String", "name", ";", "int", ";", "}");
         Room room = new Room(
                 Constants.ROOM_WIDTH,
                 Constants.ROOM_HEIGHT,
                 levelTokens,
-                classRoomWalls(),
-                List.of(new Chest(1010, 520, 46, 34)),
+                mazeLayout.walls(),
+                mazeLayout.chests(),
                 List.of(),
                 ChestReward.goal(),
                 createExitDoor(),
-                new Door(520, 310, 92, 14),
+                mazeLayout.challengeDoor(),
                 new MultipleChoiceQuestion(
                         "Which type should the power field use?",
                         "_____ power;",
@@ -420,35 +578,46 @@ public class LevelManager {
                 puzzle
         );
 
-        return new Level(
-                6,
+        return level(
+                17,
+                5,
+                1,
+                STAGE_5,
                 "Class Blueprint",
                 "Classes and fields",
-                "A class is a blueprint. Fields describe the data each object can store, such as a name or power value.",
-                "Hint: The class name is Item, and it has two fields: String name and int power.",
+                "A class is a blueprint. Fields describe the data each object can store.",
+                "Hint: The class name is Item, and it has fields String name and int power.",
                 room
         );
     }
 
     private Level createConstructorForgeLevel() {
-        Puzzle puzzle = new Puzzle(
+        Puzzle puzzle = puzzle(
                 "Constructor Forge",
                 "Build a Player class with fields, a constructor, and a heal method.",
                 List.of("classes", "constructors", "methods"),
                 new ClassConstructorMethodValidator()
         );
 
-        List<ChestReward> rewards = classConstructorRewards();
+        List<ChestReward> rewards = shuffledRewards(List.of(
+                "class", "Player", "{", "String", "name", ";",
+                "int", "health", ";", "Player", "(", "String",
+                "name", ",", "int", "health", ")", "{",
+                "this.name", "=", "name", ";", "this.health", "=",
+                "health", ";", "}", "void", "(", ")", "{",
+                "health", "=", "health", "+", "1", ";", "}", "}"
+        ));
+        GridRoomBuilder.GridRoomLayout mazeLayout = RoomLayoutBuilder.gridLockedRoomMaze(rewards.size() + 1, 6);
         Room room = new Room(
                 Constants.ROOM_WIDTH,
                 Constants.ROOM_HEIGHT,
                 List.of(),
-                constructorRoomWalls(),
-                spreadChests(rewards.size() + 1),
+                mazeLayout.walls(),
+                mazeLayout.chests(),
                 rewards,
                 ChestReward.goal(),
                 createExitDoor(),
-                new Door(635, 315, 96, 14),
+                mazeLayout.challengeDoor(),
                 new MultipleChoiceQuestion(
                         "Which method name should increase health?",
                         "void _____() { health = health + 1; }",
@@ -459,31 +628,35 @@ public class LevelManager {
                 puzzle
         );
 
-        return new Level(
-                7,
+        return level(
+                18,
+                5,
+                2,
+                STAGE_5,
                 "Constructor Forge",
                 "Constructors and methods",
-                "A constructor prepares a new object by assigning its fields. Methods describe actions the object can do.",
-                "Hint: Assign both fields in the constructor, then write void heal() to increase health by 1.",
+                "A constructor prepares a new object by assigning its fields.",
+                "Hint: Assign both fields in the constructor, then write void heal().",
                 room
         );
     }
 
     private Level createObjectLockLevel() {
-        Puzzle finalPuzzle = new Puzzle(
+        Puzzle finalPuzzle = puzzle(
                 "Object Lock",
                 "Create an Item object named key, then call key.use().",
                 List.of("objects", "constructors", "method calls"),
                 new ObjectCreateAndCallValidator()
         );
-        Puzzle objectPuzzle = new Puzzle(
+        Puzzle objectPuzzle = puzzle(
                 "ironChest",
                 "Set the ironChest locked field to false.",
                 List.of("objects", "fields", "assignment"),
                 new ObjectFieldAssignmentValidator()
         );
 
-        Chest goalChest = new Chest(990, 510, 56, 42, true);
+        GridRoomBuilder.GridRoomLayout mazeLayout = RoomLayoutBuilder.gridObjectLockMaze();
+        Chest goalChest = RoomLayoutBuilder.gridChest(10, 3, 56, 42, true);
         ProgrammableObject ironChest = new ProgrammableObject(
                 "ironChest",
                 "ironChest",
@@ -504,13 +677,13 @@ public class LevelManager {
                 Constants.ROOM_WIDTH,
                 Constants.ROOM_HEIGHT,
                 levelTokens,
-                objectLockWalls(),
+                mazeLayout.walls(),
                 List.of(goalChest),
                 List.of(ironChest),
                 List.of(),
                 ChestReward.goal(),
                 createExitDoor(),
-                new Door(500, 395, 120, 14),
+                mazeLayout.challengeDoor(),
                 new MultipleChoiceQuestion(
                         "Which method should the key object call?",
                         "key._____();",
@@ -521,75 +694,72 @@ public class LevelManager {
                 finalPuzzle
         );
 
-        return new Level(
-                8,
+        return level(
+                19,
+                5,
+                3,
+                STAGE_5,
                 "Object Lock",
                 "Objects and field access",
-                "Objects are created from classes. Dot access lets code reach an object's fields and methods.",
-                "Hint: First program ironChest with ironChest.locked = false;, then open the Goal chest and create the key object.",
+                "Objects are created from classes. Dot access reaches an object's fields and methods.",
+                "Hint: First program ironChest, then create the key object and call use.",
                 room
         );
     }
 
-    private List<Wall> classRoomWalls() {
-        return List.of(
-                new Wall(190, 120, 14, 360),
-                new Wall(360, 120, 14, 185),
-                new Wall(360, 385, 14, 145),
-                new Wall(520, 120, 14, 190),
-                new Wall(610, 310, 210, 14),
-                new Wall(820, 120, 14, 360)
+    private Puzzle puzzle(String title, String instructions, List<String> concepts, CodeValidator validator) {
+        return new Puzzle(title, instructions, concepts, validator);
+    }
+
+    private Level level(
+            int levelNumber,
+            int stageNumber,
+            int stageLevelNumber,
+            String stageTitle,
+            String name,
+            String concept,
+            String completionExplanation,
+            String goalHelper,
+            Room room
+    ) {
+        return new Level(
+                levelNumber,
+                stageNumber,
+                stageLevelNumber,
+                stageTitle,
+                name,
+                concept,
+                completionExplanation,
+                goalHelper,
+                room
         );
     }
 
-    private List<Wall> constructorRoomWalls() {
-        return List.of(
-                new Wall(150, 100, 14, 430),
-                new Wall(310, 100, 14, 230),
-                new Wall(475, 210, 14, 330),
-                new Wall(635, 92, 14, 220),
-                new Wall(730, 315, 210, 14),
-                new Wall(940, 160, 14, 360),
-                new Wall(310, 330, 170, 14)
-        );
+    private Room simpleRoom(List<Token> levelTokens, Puzzle puzzle) {
+        return new Room(Constants.ROOM_WIDTH, Constants.ROOM_HEIGHT, levelTokens, createExitDoor(), puzzle);
     }
 
-    private List<Wall> objectLockWalls() {
-        return List.of(
-                new Wall(170, 90, 14, 425),
-                new Wall(330, 205, 14, 330),
-                new Wall(500, 90, 14, 300),
-                new Wall(620, 395, 210, 14),
-                new Wall(830, 150, 14, 385),
-                new Wall(980, 90, 14, 310)
-        );
-    }
-
-    private List<Chest> spreadChests(int count) {
-        List<Chest> chests = new ArrayList<>();
-        double[] xs = {215, 350, 485, 620, 755, 890, 1035};
-        double[] ys = {82, 168, 254, 340, 426, 512};
-        for (double y : ys) {
-            for (double x : xs) {
-                if (chests.size() >= count) {
-                    return chests;
-                }
-                chests.add(new Chest(x, y, 46, 34));
-            }
+    private List<Token> tokens(String... values) {
+        List<Token> tokens = new ArrayList<>();
+        for (int i = 0; i < values.length; i++) {
+            double x = 118 + (i % 6) * 132;
+            double y = 118 + (i / 6) * 78;
+            tokens.add(new Token(values[i], x, y, tokenWidth(values[i]), 28));
         }
-        return chests;
+        return tokens;
     }
 
-    private List<ChestReward> classConstructorRewards() {
+    private double tokenWidth(String value) {
+        return Math.max(46, value.length() * 11 + 24);
+    }
+
+    private Token specialToken(String value, double x, double y, TokenType type) {
+        return new Token(value, x, y, tokenWidth(value), 28, type);
+    }
+
+    private List<ChestReward> shuffledRewards(List<String> values) {
         List<ChestReward> rewards = new ArrayList<>();
-        for (String value : List.of(
-                "class", "Player", "{", "String", "name", ";",
-                "int", "health", ";", "Player", "(", "String",
-                "name", ",", "int", "health", ")", "{",
-                "this.name", "=", "name", ";", "this.health", "=",
-                "health", ";", "}", "void", "(", ")", "{",
-                "health", "=", "health", "+", "1", ";", "}", "}"
-        )) {
+        for (String value : values) {
             rewards.add(ChestReward.code(value));
         }
         Collections.shuffle(rewards);
@@ -597,6 +767,12 @@ public class LevelManager {
     }
 
     private Door createExitDoor() {
-        return new Door(Constants.ROOM_WIDTH - 82, Constants.ROOM_HEIGHT / 2.0 - 59, 52, 118);
+        return RoomLayoutBuilder.rightExitDoor();
+    }
+
+    private record LevelDefinition(Supplier<Level> factory) {
+        private Level create() {
+            return factory.get();
+        }
     }
 }

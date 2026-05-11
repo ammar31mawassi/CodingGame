@@ -7,6 +7,30 @@ import com.github.javaparser.ast.stmt.Statement;
 import java.util.Optional;
 
 public class IfElsePrintValidator implements CodeValidator {
+    private final String leftOperand;
+    private final String rightOperand;
+    private final BinaryExpr.Operator operator;
+    private final String trueMessage;
+    private final String falseMessage;
+
+    public IfElsePrintValidator() {
+        this("grade", "x", BinaryExpr.Operator.GREATER, "passed", "failed");
+    }
+
+    public IfElsePrintValidator(
+            String leftOperand,
+            String rightOperand,
+            BinaryExpr.Operator operator,
+            String trueMessage,
+            String falseMessage
+    ) {
+        this.leftOperand = leftOperand;
+        this.rightOperand = rightOperand;
+        this.operator = operator;
+        this.trueMessage = trueMessage;
+        this.falseMessage = falseMessage;
+    }
+
     @Override
     public ValidationResult validate(String code) {
         Optional<Statement> statement = JavaSyntaxValidator.parseStatementAst(code);
@@ -18,20 +42,20 @@ public class IfElsePrintValidator implements CodeValidator {
         if (ifStatement.getElseStmt().isEmpty()) {
             return ValidationResult.failure("Add an else branch.");
         }
-        if (!isGradeGreaterThanX(ifStatement.getCondition())) {
-            return ValidationResult.failure("Use grade and x in the condition.");
+        if (!isExpectedCondition(ifStatement.getCondition())) {
+            return ValidationResult.failure("Use the expected condition.");
         }
-        if (!printsExpectedMessage(ifStatement.getThenStmt(), "passed")) {
-            return ValidationResult.failure("Print \"passed\" when the condition is true.");
+        if (!printsExpectedMessage(ifStatement.getThenStmt(), trueMessage)) {
+            return ValidationResult.failure("Print \"" + trueMessage + "\" when the condition is true.");
         }
-        if (!printsExpectedMessage(ifStatement.getElseStmt().get(), "failed")) {
-            return ValidationResult.failure("Print \"failed\" in the else branch.");
+        if (!printsExpectedMessage(ifStatement.getElseStmt().get(), falseMessage)) {
+            return ValidationResult.failure("Print \"" + falseMessage + "\" in the else branch.");
         }
 
         return ValidationResult.success("Correct if-else statement.");
     }
 
-    private boolean isGradeGreaterThanX(Expression condition) {
+    private boolean isExpectedCondition(Expression condition) {
         Expression expression = unwrap(condition);
         if (!expression.isBinaryExpr()) {
             return false;
@@ -40,8 +64,22 @@ public class IfElsePrintValidator implements CodeValidator {
         BinaryExpr binary = expression.asBinaryExpr();
         String left = binary.getLeft().toString();
         String right = binary.getRight().toString();
-        return (binary.getOperator() == BinaryExpr.Operator.GREATER && left.equals("grade") && right.equals("x"))
-                || (binary.getOperator() == BinaryExpr.Operator.LESS && left.equals("x") && right.equals("grade"));
+        return (binary.getOperator() == operator
+                && left.equals(leftOperand)
+                && right.equals(rightOperand))
+                || (binary.getOperator() == reversedOperator(operator)
+                && left.equals(rightOperand)
+                && right.equals(leftOperand));
+    }
+
+    private BinaryExpr.Operator reversedOperator(BinaryExpr.Operator operator) {
+        return switch (operator) {
+            case GREATER -> BinaryExpr.Operator.LESS;
+            case GREATER_EQUALS -> BinaryExpr.Operator.LESS_EQUALS;
+            case LESS -> BinaryExpr.Operator.GREATER;
+            case LESS_EQUALS -> BinaryExpr.Operator.GREATER_EQUALS;
+            default -> operator;
+        };
     }
 
     private boolean printsExpectedMessage(Statement statement, String expectedMessage) {

@@ -59,7 +59,7 @@ public class GameView {
     private static final double BOTTOM_CONTROL_MARGIN = 86;
     private static final double GOAL_MARGIN_LEFT = 42;
     private static final double GOAL_MARGIN_BOTTOM = 8;
-    private static final double HARD_MODE_LIGHT_RADIUS = 165;
+    private static final double HARD_MODE_LIGHT_RADIUS = 123.75;
     private static final double BUG_HUD_HEIGHT = 46;
     private static final double GAME_SURFACE_TOP_PADDING = 12;
     private static final double GAME_SURFACE_HUD_GAP = 10;
@@ -637,15 +637,16 @@ public class GameView {
     }
 
     private String levelAdvice() {
-        return switch (gameState.getCurrentLevel().getLevelNumber()) {
-            case 1 -> "New: collect code tokens and open the terminal.";
-            case 2 -> "New: find the hidden Goal before solving.";
-            case 3 -> "New: blue Helper tokens reveal extra hints.";
-            case 4 -> "New: maze chests hide the pieces you need.";
-            case 5 -> "New: question doors unlock extra room rewards.";
-            case 6 -> "New: classes group fields into a blueprint.";
-            case 7 -> "New: constructors prepare objects and methods make them act.";
-            case 8 -> "New: object terminals let code change map objects.";
+        return switch (gameState.getCurrentLevel().getDisplayId()) {
+            case "1-1" -> "New: collect code tokens and open the terminal.";
+            case "1-2" -> "New: print statements send text to the output.";
+            case "2-2" -> "New: maze chests hide the pieces you need.";
+            case "2-3" -> "New: question doors unlock extra room rewards.";
+            case "3-3" -> "New: methods let you bundle reusable code.";
+            case "4-1" -> "New: loops repeat while their condition stays true.";
+            case "5-1" -> "New: classes group fields into a blueprint.";
+            case "5-2" -> "New: constructors prepare objects and methods make them act.";
+            case "5-3" -> "New: object terminals let code change map objects.";
             default -> "";
         };
     }
@@ -946,7 +947,7 @@ public class GameView {
 
         Player player = gameState.getPlayer();
         Rectangle darkness = new Rectangle(Constants.ROOM_WIDTH, Constants.ROOM_HEIGHT);
-        darkness.setFill(Color.rgb(0, 0, 0, 0.76));
+        darkness.setFill(Color.BLACK);
 
         Circle light = new Circle(
                 player.getX() + player.getWidth() / 2.0,

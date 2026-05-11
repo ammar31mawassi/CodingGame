@@ -12,14 +12,20 @@ import javafx.geometry.Insets;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.control.Separator;
 import javafx.scene.control.TextArea;
-import javafx.scene.control.OverrunStyle;
+import javafx.scene.input.ClipboardContent;
+import javafx.scene.input.Dragboard;
+import javafx.scene.input.TransferMode;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 
 public class CodeBuilderView {
+    private static final String AVAILABLE_DRAG_PREFIX = "available:";
+    private static final String SELECTED_DRAG_PREFIX = "selected:";
+
     private final Inventory inventory;
     private final Puzzle puzzle;
     private final Consumer<ValidationResult> onSolved;
@@ -36,10 +42,10 @@ public class CodeBuilderView {
     private TextArea typedCodeInput;
     private final Button removeLastButton = new Button("Remove Last");
     private final Button clearButton = new Button("Clear");
-    private final Button submitButton = new Button("Submit Tokens");
-    private final Button submitTypedButton = new Button("Submit Typed Code");
+    private final Button submitButton = new Button("Submit");
     private boolean showGoal;
     private boolean solved;
+    private boolean syncingTypedCode;
 
     public CodeBuilderView(Inventory inventory, Puzzle puzzle) {
         this(inventory, puzzle, true, result -> {
@@ -82,7 +88,7 @@ public class CodeBuilderView {
         removeLastButton.setOnAction(event -> removeLastToken());
         clearButton.setOnAction(event -> clearAnswer());
         submitButton.setOnAction(event -> submitAnswer());
-        submitTypedButton.setOnAction(event -> submitTypedAnswer());
+        configureSelectedTokenBoxDropTarget();
 
         answerPreviewLabel.setWrapText(true);
         answerPreviewLabel.setMaxWidth(Double.MAX_VALUE);
@@ -95,14 +101,16 @@ public class CodeBuilderView {
         removeLastButton.getStyleClass().add("pixel-button");
         clearButton.getStyleClass().add("pixel-button");
         submitButton.getStyleClass().add("pixel-button");
-        submitTypedButton.getStyleClass().add("pixel-button");
 
         typedCodeInput = new TextArea();
-        typedCodeInput.setPromptText("Type Java code here...");
+        typedCodeInput.setPromptText("Type Java code here, or build it with tokens...");
         typedCodeInput.setWrapText(true);
         typedCodeInput.setPrefRowCount(4);
         typedCodeInput.getStyleClass().add("typed-code-input");
-        typedCodeInput.textProperty().addListener((observable, oldValue, newValue) -> updateControls());
+        typedCodeInput.textProperty().addListener((observable, oldValue, newValue) -> {
+            syncTokensFromTypedCode(newValue);
+            updateControls();
+        });
 
         refreshAvailableTokens();
         refreshSelectedTokens();
@@ -114,11 +122,11 @@ public class CodeBuilderView {
         Label answerLabel = new Label("Answer");
         answerLabel.getStyleClass().add("puzzle-copy");
 
+        Label tokenizedAnswerLabel = new Label("Used Tokens");
+        tokenizedAnswerLabel.getStyleClass().add("puzzle-copy");
+
         Label availableTokensLabel = new Label("Available Tokens");
         availableTokensLabel.getStyleClass().add("puzzle-copy");
-
-        Label typedCodeLabel = new Label("Typed Code");
-        typedCodeLabel.getStyleClass().add("puzzle-copy");
 
         VBox root = new VBox(
                 12,
@@ -126,14 +134,13 @@ public class CodeBuilderView {
                 instructionsLabel,
                 new Separator(),
                 answerLabel,
+                typedCodeInput,
+                tokenizedAnswerLabel,
                 answerPreviewLabel,
                 selectedTokenBox,
-                typedCodeLabel,
-                typedCodeInput,
                 availableTokensLabel,
                 availableTokenBox,
                 actionControls,
-                submitTypedButton,
                 feedbackLabel
         );
         root.setPadding(new Insets(20));
@@ -145,18 +152,23 @@ public class CodeBuilderView {
     public void refresh(boolean showGoal) {
         this.showGoal = showGoal;
         refreshGoalText();
-        refreshSelectedTokens();
+        syncTokensFromTypedCode(typedCodeInput == null ? "" : typedCodeInput.getText());
         refreshAvailableTokens();
         updateControls();
     }
 
     private void addTokenToAnswer(int tokenIndex, String token) {
+        addTokenToAnswerAt(tokenIndex, token, selectedTokens.size());
+    }
+
+    private void addTokenToAnswerAt(int tokenIndex, String token, int selectedIndex) {
         if (solved || selectedTokenIndexes.contains(tokenIndex)) {
             return;
         }
 
-        selectedTokenIndexes.add(tokenIndex);
-        selectedTokens.add(token);
+        int insertionIndex = Math.max(0, Math.min(selectedIndex, selectedTokens.size()));
+        selectedTokenIndexes.add(insertionIndex, tokenIndex);
+        selectedTokens.add(insertionIndex, token);
         feedbackLabel.setText("");
         refreshSelectedTokens();
         refreshAvailableTokens();
@@ -244,22 +256,18 @@ public class CodeBuilderView {
     }
 
     private void submitAnswer() {
-        submitCode(buildCodeString());
-    }
-
-    private void submitTypedAnswer() {
         if (typedCodeInput == null) {
             return;
         }
 
-        String typedCode = typedCodeInput.getText();
-        ValidationResult tokenUsageResult = TypedTokenUsageValidator.validate(typedCode, inventory.getTokenValues());
+        String code = typedCodeInput.getText();
+        ValidationResult tokenUsageResult = TypedTokenUsageValidator.validate(code, inventory.getTokenValues());
         if (!tokenUsageResult.isValid()) {
             showFeedback(tokenUsageResult);
             return;
         }
 
-        submitCode(typedCode);
+        submitCode(code);
     }
 
     private void submitCode(String code) {
@@ -289,17 +297,41 @@ public class CodeBuilderView {
     }
 
     private void refreshSelectedTokens() {
+        refreshSelectedTokens(true);
+    }
+
+    private void refreshSelectedTokens(boolean updateTypedInput) {
         selectedTokenBox.getChildren().clear();
         for (int i = 0; i < selectedTokens.size(); i++) {
             int selectedIndex = i;
             Label label = new Label(selectedTokens.get(i));
             label.getStyleClass().add("selected-token");
             label.setOnMouseClicked(event -> removeTokenAt(selectedIndex));
+            label.setOnDragDetected(event -> {
+                Dragboard dragboard = label.startDragAndDrop(TransferMode.MOVE);
+                ClipboardContent content = new ClipboardContent();
+                content.putString(SELECTED_DRAG_PREFIX + selectedIndex);
+                dragboard.setContent(content);
+                event.consume();
+            });
+            label.setOnDragOver(event -> {
+                if (isSupportedTokenDrag(event.getDragboard())) {
+                    event.acceptTransferModes(TransferMode.MOVE);
+                    event.consume();
+                }
+            });
+            label.setOnDragDropped(event -> {
+                event.setDropCompleted(handleTokenDrop(event.getDragboard(), selectedIndex));
+                event.consume();
+            });
             selectedTokenBox.getChildren().add(label);
         }
 
         String code = buildCodeString();
         answerPreviewLabel.setText(code.isBlank() ? "(empty)" : code);
+        if (updateTypedInput) {
+            syncTypedInputFromTokens(code);
+        }
     }
 
     private void refreshAvailableTokens() {
@@ -317,9 +349,8 @@ public class CodeBuilderView {
         boolean hasSelection = !selectedTokens.isEmpty();
         removeLastButton.setDisable(!hasSelection || solved);
         clearButton.setDisable(!hasSelection || solved);
-        submitButton.setDisable(!hasSelection || solved || !showGoal);
         boolean hasTypedCode = typedCodeInput != null && !typedCodeInput.getText().isBlank();
-        submitTypedButton.setDisable(!hasTypedCode || solved || !showGoal);
+        submitButton.setDisable(!hasTypedCode || solved || !showGoal);
         if (typedCodeInput != null) {
             typedCodeInput.setEditable(!solved);
         }
@@ -335,8 +366,118 @@ public class CodeBuilderView {
             Button button = new Button(value);
             button.getStyleClass().add("token-button");
             button.setOnAction(event -> addTokenToAnswer(tokenIndex, value));
+            button.setOnDragDetected(event -> {
+                if (button.isDisabled()) {
+                    return;
+                }
+                Dragboard dragboard = button.startDragAndDrop(TransferMode.MOVE);
+                ClipboardContent content = new ClipboardContent();
+                content.putString(AVAILABLE_DRAG_PREFIX + tokenIndex);
+                dragboard.setContent(content);
+                event.consume();
+            });
             availableTokenButtons.add(button);
             availableTokenBox.getChildren().add(button);
         }
+    }
+
+    private void syncTokensFromTypedCode(String code) {
+        if (syncingTypedCode || solved) {
+            return;
+        }
+
+        TypedTokenUsageValidator.resolveTokenIndexes(code, inventory.getTokenValues()).ifPresentOrElse(indexes -> {
+            selectedTokens.clear();
+            selectedTokenIndexes.clear();
+            List<String> tokenValues = inventory.getTokenValues();
+            for (Integer tokenIndex : indexes) {
+                selectedTokenIndexes.add(tokenIndex);
+                selectedTokens.add(tokenValues.get(tokenIndex));
+            }
+            feedbackLabel.setText("");
+            refreshSelectedTokens(false);
+            refreshAvailableTokens();
+        }, () -> {
+            selectedTokens.clear();
+            selectedTokenIndexes.clear();
+            refreshSelectedTokens(false);
+            refreshAvailableTokens();
+        });
+    }
+
+    private void syncTypedInputFromTokens(String code) {
+        if (typedCodeInput == null) {
+            return;
+        }
+
+        syncingTypedCode = true;
+        typedCodeInput.setText(code);
+        syncingTypedCode = false;
+    }
+
+    private void configureSelectedTokenBoxDropTarget() {
+        selectedTokenBox.setOnDragOver(event -> {
+            if (isSupportedTokenDrag(event.getDragboard())) {
+                event.acceptTransferModes(TransferMode.MOVE);
+                event.consume();
+            }
+        });
+        selectedTokenBox.setOnDragDropped(event -> {
+            event.setDropCompleted(handleTokenDrop(event.getDragboard(), selectedTokens.size()));
+            event.consume();
+        });
+    }
+
+    private boolean isSupportedTokenDrag(Dragboard dragboard) {
+        if (dragboard == null || !dragboard.hasString()) {
+            return false;
+        }
+
+        String payload = dragboard.getString();
+        return payload.startsWith(AVAILABLE_DRAG_PREFIX) || payload.startsWith(SELECTED_DRAG_PREFIX);
+    }
+
+    private boolean handleTokenDrop(Dragboard dragboard, int insertionIndex) {
+        if (!isSupportedTokenDrag(dragboard) || solved) {
+            return false;
+        }
+
+        String payload = dragboard.getString();
+        try {
+            if (payload.startsWith(AVAILABLE_DRAG_PREFIX)) {
+                int tokenIndex = Integer.parseInt(payload.substring(AVAILABLE_DRAG_PREFIX.length()));
+                List<String> tokenValues = inventory.getTokenValues();
+                if (tokenIndex < 0 || tokenIndex >= tokenValues.size()) {
+                    return false;
+                }
+                addTokenToAnswerAt(tokenIndex, tokenValues.get(tokenIndex), insertionIndex);
+                return true;
+            }
+
+            int selectedIndex = Integer.parseInt(payload.substring(SELECTED_DRAG_PREFIX.length()));
+            moveSelectedToken(selectedIndex, insertionIndex);
+            return true;
+        } catch (NumberFormatException exception) {
+            return false;
+        }
+    }
+
+    private void moveSelectedToken(int fromIndex, int toIndex) {
+        if (fromIndex < 0 || fromIndex >= selectedTokens.size()) {
+            return;
+        }
+
+        String token = selectedTokens.remove(fromIndex);
+        Integer tokenIndex = selectedTokenIndexes.remove(fromIndex);
+        int insertionIndex = Math.max(0, Math.min(toIndex, selectedTokens.size()));
+        if (insertionIndex > fromIndex) {
+            insertionIndex--;
+        }
+        selectedTokens.add(insertionIndex, token);
+        selectedTokenIndexes.add(insertionIndex, tokenIndex);
+        feedbackLabel.setText("");
+        refreshSelectedTokens();
+        refreshAvailableTokens();
+        updateControls();
     }
 }

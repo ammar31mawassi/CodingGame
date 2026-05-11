@@ -7,7 +7,7 @@ import java.util.prefs.BackingStoreException;
 import java.util.prefs.Preferences;
 
 public class ProgressSaveService {
-    static final int SCHEMA_VERSION = 1;
+    static final int SCHEMA_VERSION = 2;
     static final String KEY_SCHEMA_VERSION = "schemaVersion";
     static final String KEY_GAME_MODE = "gameMode";
     static final String KEY_CURRENT_LEVEL = "currentLevelNumber";

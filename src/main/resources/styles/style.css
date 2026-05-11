@@ -1,10 +1,13 @@
 .main-menu {
-    -fx-background-color: #171821;
+    -fx-background-color: #101419;
+    -fx-padding: 28;
 }
 
 .title {
-    -fx-font-size: 36px;
-    -fx-text-fill: white;
+    -fx-font-size: 46px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f6d65b;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.55), 12, 0, 0, 3);
 }
 
 .menu-subtitle {
@@ -13,8 +16,15 @@
     -fx-text-fill: #d9d9d7;
 }
 
+.stage-title {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #8ee3ff;
+    -fx-padding: 6 0 0 0;
+}
+
 .game-screen {
-    -fx-background-color: #171821;
+    -fx-background-color: #101419;
     -fx-font-family: "Consolas", "Courier New", monospace;
 }
 
@@ -30,15 +40,17 @@
 }
 
 .game-room {
-    -fx-background-color: #5e6478;
+    -fx-background-color: #3d4753;
+    -fx-border-color: #101419;
+    -fx-border-width: 8;
 }
 
 .room-floor {
-    -fx-fill: #5e6478;
+    -fx-fill: #3d4753;
 }
 
 .room-inner-floor {
-    -fx-fill: #282b36;
+    -fx-fill: #252e36;
 }
 
 .room-token {
@@ -64,7 +76,8 @@
 }
 
 .room-wall {
-    -fx-fill: #454a5f;
+    -fx-fill: #53606c;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 5, 0, 2, 2);
 }
 
 .room-chest {
@@ -158,11 +171,11 @@
 }
 
 .door-locked {
-    -fx-fill: #87543a;
+    -fx-fill: #9b633c;
 }
 
 .door-open {
-    -fx-fill: #43d868;
+    -fx-fill: #3fe07a;
 }
 
 .challenge-door-locked {
@@ -226,6 +239,8 @@
 .selected-token {
     -fx-background-color: #f1ce54;
     -fx-text-fill: #292a33;
+    -fx-border-color: #c4932f;
+    -fx-border-width: 0 0 4 4;
     -fx-padding: 4 9 5 9;
     -fx-font-size: 15px;
     -fx-font-weight: bold;
@@ -250,13 +265,19 @@
     -fx-opacity: 0.4;
 }
 
+.pixel-button:hover,
+.token-button:hover,
+.inventory-token-button:hover {
+    -fx-background-color: #ffe279;
+}
+
 .mode-button-selected {
     -fx-background-color: #69d7ff;
     -fx-border-color: #2b74a8;
 }
 
 .typed-code-input {
-    -fx-control-inner-background: #1f2230;
+    -fx-control-inner-background: #151b22;
     -fx-text-fill: #f1f1ec;
     -fx-highlight-fill: #2b74a8;
     -fx-highlight-text-fill: #ffffff;
@@ -338,7 +359,7 @@
 }
 
 .hard-mode-darkness {
-    -fx-fill: rgba(0, 0, 0, 0.76);
+    -fx-fill: rgba(0, 0, 0, 1);
 }
 
 .puzzle-overlay-shell {
@@ -352,9 +373,10 @@
 }
 
 .map-modal {
-    -fx-background-color: rgba(17, 19, 28, 0.84);
-    -fx-border-color: #5e6478;
+    -fx-background-color: rgba(16, 20, 25, 0.92);
+    -fx-border-color: #53606c;
     -fx-border-width: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.55), 18, 0, 0, 5);
 }
 
 .close-button {
@@ -415,12 +437,14 @@
 }
 
 .answer-preview {
-    -fx-background-color: #282b36;
+    -fx-background-color: #151b22;
+    -fx-border-color: #3d4753;
+    -fx-border-width: 3;
     -fx-padding: 8;
 }
 
 .level-complete-screen {
-    -fx-background-color: #171821;
+    -fx-background-color: #101419;
     -fx-font-family: "Consolas", "Courier New", monospace;
 }
 

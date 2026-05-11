@@ -3,10 +3,14 @@ package com.codeescape.ui;
 import com.codeescape.app.GameApp;
 import com.codeescape.model.GameMode;
 import com.codeescape.model.Level;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.Tooltip;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
@@ -57,16 +61,26 @@ public class MainMenuView {
         Label selectorTitle = new Label("Level Select");
         selectorTitle.getStyleClass().add("menu-subtitle");
 
-        FlowPane levelSelector = new FlowPane(10, 10);
+        VBox levelSelector = new VBox(12);
         levelSelector.setAlignment(Pos.CENTER);
-        levelSelector.setMaxWidth(720);
+        levelSelector.setMaxWidth(860);
         int highestSelectableLevel = app.getHighestSelectableLevel();
-        for (Level level : app.getAvailableLevels()) {
-            Button levelButton = new Button("Level " + level.getLevelNumber());
-            levelButton.getStyleClass().add("pixel-button");
-            levelButton.setDisable(level.getLevelNumber() > highestSelectableLevel);
-            levelButton.setOnAction(event -> app.startAtLevel(level.getLevelNumber()));
-            levelSelector.getChildren().add(levelButton);
+        for (Map.Entry<String, List<Level>> stage : levelsByStage().entrySet()) {
+            Label stageLabel = new Label(stage.getKey());
+            stageLabel.getStyleClass().add("stage-title");
+
+            FlowPane stageLevels = new FlowPane(10, 10);
+            stageLevels.setAlignment(Pos.CENTER);
+            for (Level level : stage.getValue()) {
+                Button levelButton = new Button(level.getDisplayId());
+                levelButton.getStyleClass().add("pixel-button");
+                levelButton.setDisable(level.getLevelNumber() > highestSelectableLevel);
+                levelButton.setTooltip(new Tooltip(level.getName() + " - " + level.getConcept()));
+                levelButton.setOnAction(event -> app.startAtLevel(level.getLevelNumber()));
+                stageLevels.getChildren().add(levelButton);
+            }
+
+            levelSelector.getChildren().addAll(stageLabel, stageLevels);
         }
 
         VBox root = new VBox(20, title, modeTitle, modeSelector, actionButtons, selectorTitle, levelSelector);
@@ -89,5 +103,14 @@ public class MainMenuView {
         } else {
             normalModeButton.getStyleClass().add("mode-button-selected");
         }
+    }
+
+    private Map<String, List<Level>> levelsByStage() {
+        Map<String, List<Level>> stages = new LinkedHashMap<>();
+        for (Level level : app.getAvailableLevels()) {
+            String stageLabel = "Stage " + level.getStageNumber() + ": " + level.getStageTitle();
+            stages.computeIfAbsent(stageLabel, key -> new java.util.ArrayList<>()).add(level);
+        }
+        return stages;
     }
 }
