@@ -6,9 +6,13 @@ import com.codeescape.util.Constants;
 import java.util.List;
 
 public final class RoomLayoutBuilder {
-    private static final double WALL_THICKNESS = 14;
-    private static final int GRID_COLUMNS = 12;
-    private static final int GRID_ROWS = 6;
+    public static final double GRID_ORIGIN_X = 72;
+    public static final double GRID_ORIGIN_Y = 78;
+    public static final double GRID_CELL_WIDTH = 82;
+    public static final double GRID_CELL_HEIGHT = 78;
+    public static final double WALL_THICKNESS = 14;
+    public static final int GRID_COLUMNS = 12;
+    public static final int GRID_ROWS = 6;
 
     private RoomLayoutBuilder() {
     }
@@ -35,16 +39,43 @@ public final class RoomLayoutBuilder {
         return builder.build();
     }
 
+    public static GridRoomBuilder.GridRoomLayout fromOverride(LevelLayoutOverride override) {
+        GridRoomBuilder.Builder builder = baseGrid();
+        int[][] cells = override.copyCells();
+        for (int row = 0; row < Math.min(GRID_ROWS, override.rows()); row++) {
+            for (int column = 0; column < Math.min(GRID_COLUMNS, override.columns()); column++) {
+                if (cells[row][column] != 0) {
+                    builder.cellFlags(column, row, cells[row][column]);
+                }
+            }
+        }
+
+        if (!override.questionDoors().isEmpty()) {
+            LevelLayoutOverride.QuestionDoorPlacement door = override.questionDoors().get(0);
+            builder.challengeDoor(door.column(), door.row(), door.side());
+        }
+
+        for (LevelLayoutOverride.ChestPlacement chest : override.chests()) {
+            builder.object(
+                    chest.column(),
+                    chest.row(),
+                    chest.lockedRoomOnly() ? GridRoomBuilder.lockedRoomChest() : GridRoomBuilder.chest()
+            );
+        }
+
+        return builder.build();
+    }
+
     public static Chest gridChest(int column, int row, double width, double height, boolean locked) {
-        double centerX = 72 + column * 82 + 41;
-        double centerY = 78 + row * 78 + 39;
+        double centerX = GRID_ORIGIN_X + column * GRID_CELL_WIDTH + GRID_CELL_WIDTH / 2.0;
+        double centerY = GRID_ORIGIN_Y + row * GRID_CELL_HEIGHT + GRID_CELL_HEIGHT / 2.0;
         return new Chest(centerX - width / 2.0, centerY - height / 2.0, width, height, locked);
     }
 
     private static GridRoomBuilder.Builder baseGrid() {
         return GridRoomBuilder.builder(GRID_COLUMNS, GRID_ROWS)
-                .origin(72, 78)
-                .cellSize(82, 78)
+                .origin(GRID_ORIGIN_X, GRID_ORIGIN_Y)
+                .cellSize(GRID_CELL_WIDTH, GRID_CELL_HEIGHT)
                 .wallThickness(WALL_THICKNESS)
                 .spawnCell(0, 0);
     }

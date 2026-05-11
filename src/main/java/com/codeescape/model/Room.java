@@ -106,6 +106,14 @@ public class Room {
         return Collections.unmodifiableList(chests);
     }
 
+    public List<ChestReward> getChestRewards() {
+        return Collections.unmodifiableList(chestRewards);
+    }
+
+    public ChestReward getFinalChestReward() {
+        return finalChestReward;
+    }
+
     public List<ProgrammableObject> getProgrammableObjects() {
         return Collections.unmodifiableList(programmableObjects);
     }

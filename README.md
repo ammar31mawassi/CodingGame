@@ -35,6 +35,14 @@ On Windows:
 .\mvnw.cmd javafx:run
 ```
 
+To open the standalone layout tool instead of the game:
+
+```bash
+.\mvnw.cmd javafx:run -Djavafx.mainClass=com.codeescape/com.codeescape.LevelEditor
+```
+
+The level editor saves playable overrides in `level-overrides/`. The game reads those files when it builds levels, so re-entering an edited level uses the saved walls, chests, first question door, visible/chest tokens, goal text, helper text, and accepted final answers.
+
 ## Test
 
 On macOS/Linux:

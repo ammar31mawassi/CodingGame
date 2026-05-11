@@ -3,6 +3,28 @@
     -fx-padding: 28;
 }
 
+.admin-view {
+    -fx-background-color: #101419;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+}
+
+.admin-scroll {
+    -fx-background: #101419;
+    -fx-background-color: #101419;
+}
+
+.admin-scroll > .viewport {
+    -fx-background-color: #101419;
+}
+
+.admin-note {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #d9d9d7;
+    -fx-wrap-text: true;
+    -fx-text-alignment: center;
+}
+
 .title {
     -fx-font-size: 46px;
     -fx-font-weight: bold;

@@ -8,6 +8,7 @@ import com.codeescape.engine.ProgressSaveService;
 import com.codeescape.engine.SavedProgress;
 import com.codeescape.model.GameMode;
 import com.codeescape.model.Level;
+import com.codeescape.ui.AdminView;
 import com.codeescape.ui.GameOverView;
 import com.codeescape.ui.GameView;
 import com.codeescape.ui.LevelCompleteView;
@@ -67,6 +68,11 @@ public class GameApp extends Application {
         setScene(new MainMenuView(this).createView());
     }
 
+    public void showAdminView() {
+        ensureLevelsLoaded();
+        setScene(new AdminView(this).createView());
+    }
+
     public void startNewGame() {
         requestNewGame(selectedGameMode);
     }
@@ -108,6 +114,15 @@ public class GameApp extends Application {
     public void startAtLevel(int levelNumber, GameMode gameMode) {
         selectedGameMode = normalizeGameMode(gameMode);
         startSelectableLevel(levelNumber);
+    }
+
+    public void startAdminAtLevel(int levelNumber) {
+        ensureLevelsLoaded();
+        if (levelNumber < 1 || levelNumber > getFinalLevelNumber()) {
+            return;
+        }
+
+        startLevel(levelNumber, selectedGameMode, ProgressRun.unsaved(), 0, true);
     }
 
     public GameMode getSelectedGameMode() {

@@ -3,31 +3,34 @@ package com.codeescape.ui;
 import com.codeescape.app.GameApp;
 import com.codeescape.model.GameMode;
 import com.codeescape.model.Level;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.Tooltip;
 import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
-public class MainMenuView {
+public class AdminView {
     private final GameApp app;
 
-    public MainMenuView(GameApp app) {
+    public AdminView(GameApp app) {
         this.app = app;
     }
 
     public Parent createView() {
-        Label title = new Label("Code Escape");
+        Label title = new Label("Admin View");
         title.getStyleClass().add("title");
 
-        Label modeTitle = new Label("Choose Mode");
-        modeTitle.getStyleClass().add("menu-subtitle");
+        Label note = new Label("All levels are unlocked here. Admin runs are unsaved, so your normal save stays untouched.");
+        note.getStyleClass().add("admin-note");
 
         Button normalModeButton = createModeButton(GameMode.NORMAL);
         Button hardModeButton = createModeButton(GameMode.HARD);
@@ -44,32 +47,9 @@ public class MainMenuView {
         HBox modeSelector = new HBox(12, normalModeButton, hardModeButton);
         modeSelector.setAlignment(Pos.CENTER);
 
-        Button startButton = new Button("Start Game");
-        startButton.getStyleClass().add("pixel-button");
-        startButton.setOnAction(event -> app.startNewGame(app.getSelectedGameMode()));
-
-        VBox actionButtons = new VBox(12);
-        actionButtons.setAlignment(Pos.CENTER);
-        if (app.hasContinuableSave()) {
-            Button continueButton = new Button("Continue Game");
-            continueButton.getStyleClass().add("pixel-button");
-            continueButton.setOnAction(event -> app.continueGame());
-            actionButtons.getChildren().add(continueButton);
-        }
-        actionButtons.getChildren().add(startButton);
-        Button adminButton = new Button("Admin View");
-        adminButton.getStyleClass().add("pixel-button");
-        adminButton.setTooltip(new Tooltip("Open all levels without changing saved progress."));
-        adminButton.setOnAction(event -> app.showAdminView());
-        actionButtons.getChildren().add(adminButton);
-
-        Label selectorTitle = new Label("Level Select");
-        selectorTitle.getStyleClass().add("menu-subtitle");
-
         VBox levelSelector = new VBox(12);
         levelSelector.setAlignment(Pos.CENTER);
-        levelSelector.setMaxWidth(860);
-        int highestSelectableLevel = app.getHighestSelectableLevel();
+        levelSelector.setMaxWidth(980);
         for (Map.Entry<String, List<Level>> stage : levelsByStage().entrySet()) {
             Label stageLabel = new Label(stage.getKey());
             stageLabel.getStyleClass().add("stage-title");
@@ -79,19 +59,27 @@ public class MainMenuView {
             for (Level level : stage.getValue()) {
                 Button levelButton = new Button(level.getDisplayId());
                 levelButton.getStyleClass().add("pixel-button");
-                levelButton.setDisable(level.getLevelNumber() > highestSelectableLevel);
                 levelButton.setTooltip(new Tooltip(level.getName() + " - " + level.getConcept()));
-                levelButton.setOnAction(event -> app.startAtLevel(level.getLevelNumber()));
+                levelButton.setOnAction(event -> app.startAdminAtLevel(level.getLevelNumber()));
                 stageLevels.getChildren().add(levelButton);
             }
 
             levelSelector.getChildren().addAll(stageLabel, stageLevels);
         }
 
-        VBox root = new VBox(20, title, modeTitle, modeSelector, actionButtons, selectorTitle, levelSelector);
-        root.setAlignment(Pos.CENTER);
-        root.getStyleClass().add("main-menu");
-        return root;
+        Button backButton = new Button("Main Menu");
+        backButton.getStyleClass().add("pixel-button");
+        backButton.setOnAction(event -> app.showMainMenu());
+
+        VBox content = new VBox(18, title, note, modeSelector, levelSelector, backButton);
+        content.setAlignment(Pos.CENTER);
+        content.setPadding(new Insets(28));
+        content.getStyleClass().add("admin-view");
+
+        ScrollPane scrollPane = new ScrollPane(content);
+        scrollPane.setFitToWidth(true);
+        scrollPane.getStyleClass().add("admin-scroll");
+        return scrollPane;
     }
 
     private Button createModeButton(GameMode mode) {
@@ -114,7 +102,7 @@ public class MainMenuView {
         Map<String, List<Level>> stages = new LinkedHashMap<>();
         for (Level level : app.getAvailableLevels()) {
             String stageLabel = "Stage " + level.getStageNumber() + ": " + level.getStageTitle();
-            stages.computeIfAbsent(stageLabel, key -> new java.util.ArrayList<>()).add(level);
+            stages.computeIfAbsent(stageLabel, key -> new ArrayList<>()).add(level);
         }
         return stages;
     }

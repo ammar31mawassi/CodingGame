@@ -36,6 +36,10 @@ public class MultipleChoiceQuestion {
         return choices;
     }
 
+    public String getCorrectAnswer() {
+        return correctAnswer;
+    }
+
     public ChestReward getReward() {
         return reward;
     }
