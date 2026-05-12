@@ -18,7 +18,7 @@ public class GameState {
     private boolean tutorialSeen;
 
     public GameState() {
-        player = createDefaultPlayer();
+        player = createPlayer(Constants.PLAYER_START_X, Constants.PLAYER_START_Y);
         inventory = new Inventory();
     }
 
@@ -48,7 +48,7 @@ public class GameState {
 
     public void resetForLevel(Level level) {
         currentLevel = level;
-        player = createDefaultPlayer();
+        player = createPlayerForLevel(level);
         inventory = new Inventory();
         currentLevelHadMistake = false;
         gameFinished = false;
@@ -98,10 +98,21 @@ public class GameState {
         tutorialSeen = true;
     }
 
-    private Player createDefaultPlayer() {
+    private Player createPlayerForLevel(Level level) {
+        if (level != null && "2-2".equals(level.getDisplayId())) {
+            return createPlayer(
+                    RoomLayoutBuilder.GRID_ORIGIN_X + (RoomLayoutBuilder.GRID_CELL_WIDTH - Constants.PLAYER_WIDTH) / 2.0,
+                    RoomLayoutBuilder.GRID_ORIGIN_Y + (RoomLayoutBuilder.GRID_CELL_HEIGHT - Constants.PLAYER_HEIGHT) / 2.0
+            );
+        }
+
+        return createPlayer(Constants.PLAYER_START_X, Constants.PLAYER_START_Y);
+    }
+
+    private Player createPlayer(double x, double y) {
         return new Player(
-                Constants.PLAYER_START_X,
-                Constants.PLAYER_START_Y,
+                x,
+                y,
                 Constants.PLAYER_WIDTH,
                 Constants.PLAYER_HEIGHT,
                 Constants.PLAYER_SPEED

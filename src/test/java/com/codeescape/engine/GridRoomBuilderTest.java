@@ -35,6 +35,19 @@ class GridRoomBuilderTest {
     }
 
     @Test
+    void allowsNormalObjectsBehindLockedDoors() {
+        GridRoomBuilder.GridRoomLayout layout = GridRoomBuilder.builder(2, 2)
+                .wall(0, 1, GridRoomBuilder.Side.RIGHT)
+                .wall(1, 0, GridRoomBuilder.Side.BOTTOM)
+                .challengeDoor(1, 0, GridRoomBuilder.Side.LEFT)
+                .object(1, 0, GridRoomBuilder.chest())
+                .build();
+
+        assertEquals(1, layout.chests().size());
+        assertNotNull(layout.challengeDoor());
+    }
+
+    @Test
     void rejectsLockedObjectsReachableBeforeDoorOpens() {
         GridRoomBuilder.Builder builder = GridRoomBuilder.builder(2, 2)
                 .object(1, 0, GridRoomBuilder.lockedRoomChest());

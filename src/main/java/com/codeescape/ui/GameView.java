@@ -27,6 +27,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.OverrunStyle;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
@@ -73,6 +74,11 @@ public class GameView {
     private static final long NOTIFICATION_STACK_STEP_NANOS = 650_000_000L;
     private static final long NOTIFICATION_REFRESH_GRACE_NANOS = 50_000_000L;
     private static final double ADVICE_TOAST_SECONDS = 7.0;
+    private static final double CHALLENGE_MODAL_WIDTH = 760;
+    private static final double CHALLENGE_CONTENT_WIDTH = 680;
+    private static final double CHALLENGE_MIN_MODAL_HEIGHT = 420;
+    private static final double CHALLENGE_MAX_MODAL_HEIGHT = 620;
+    private static final int CHALLENGE_PROMPT_CHARS_PER_LINE = 54;
     private static final String JAVA_LIFE_IMAGE_PATH = "/images/java-14-logo-png-transparent.png";
     private static final String BUG_LIFE_IMAGE_PATH = "/images/bug-icon.png";
 
@@ -384,24 +390,60 @@ public class GameView {
 
         Label prompt = new Label(question.getPrompt());
         prompt.getStyleClass().add("modal-copy");
-        prompt.setWrapText(true);
+        configureWrappingText(prompt, CHALLENGE_CONTENT_WIDTH);
 
         Label code = new Label(question.getCode());
         code.getStyleClass().add("answer-preview");
+        configureWrappingText(code, CHALLENGE_CONTENT_WIDTH);
         code.setMinHeight(Region.USE_PREF_SIZE);
 
         VBox choices = new VBox(10);
         for (String choice : question.getChoices()) {
             Button choiceButton = new Button(choice);
             choiceButton.getStyleClass().add("pixel-button");
+            choiceButton.setWrapText(true);
+            choiceButton.setTextOverrun(OverrunStyle.CLIP);
+            choiceButton.setMinHeight(Region.USE_PREF_SIZE);
             choiceButton.setMaxWidth(Double.MAX_VALUE);
             choiceButton.setOnAction(event -> answerChallengeQuestion(choice));
             choices.getChildren().add(choiceButton);
         }
 
         VBox content = new VBox(14, title, prompt, code, choices);
-        content.setMaxWidth(560);
-        showModal(content, 640, 420, ModalType.CHALLENGE);
+        content.setPrefWidth(CHALLENGE_CONTENT_WIDTH);
+        content.setMaxWidth(CHALLENGE_CONTENT_WIDTH);
+        showModal(
+                content,
+                CHALLENGE_MODAL_WIDTH,
+                challengeModalHeight(question.getPrompt(), question.getCode(), question.getChoices().size()),
+                ModalType.CHALLENGE
+        );
+    }
+
+    private void configureWrappingText(Label label, double width) {
+        label.setWrapText(true);
+        label.setTextOverrun(OverrunStyle.CLIP);
+        label.setPrefWidth(width);
+        label.setMaxWidth(width);
+        label.setMinHeight(Region.USE_PREF_SIZE);
+    }
+
+    private double challengeModalHeight(String prompt, String code, int choiceCount) {
+        int promptLines = estimatedWrappedLines(prompt, CHALLENGE_PROMPT_CHARS_PER_LINE);
+        int codeLines = estimatedWrappedLines(code, CHALLENGE_PROMPT_CHARS_PER_LINE);
+        double estimatedHeight = 350
+                + promptLines * 28
+                + Math.max(0, codeLines - 1) * 22
+                + Math.max(0, choiceCount - 4) * 52;
+        return Math.max(CHALLENGE_MIN_MODAL_HEIGHT, Math.min(CHALLENGE_MAX_MODAL_HEIGHT, estimatedHeight));
+    }
+
+    private int estimatedWrappedLines(String text, int charactersPerLine) {
+        if (text == null || text.isBlank()) {
+            return 1;
+        }
+
+        return Math.max(1, (int) Math.ceil((double) text.length() / charactersPerLine));
     }
 
     private void answerChallengeQuestion(String choice) {
@@ -728,12 +770,29 @@ public class GameView {
         Rectangle floor = new Rectangle(Constants.ROOM_WIDTH, Constants.ROOM_HEIGHT);
         floor.getStyleClass().add("room-floor");
 
-        Rectangle innerFloor = new Rectangle(Constants.ROOM_WIDTH - 64, Constants.ROOM_HEIGHT - 74);
-        innerFloor.setLayoutX(32);
-        innerFloor.setLayoutY(36);
+        Rectangle innerFloor = createInnerFloor();
         innerFloor.getStyleClass().add("room-inner-floor");
 
         gamePane.getChildren().addAll(floor, innerFloor);
+    }
+
+    private Rectangle createInnerFloor() {
+        Room room = gameState.getCurrentLevel().getRoom();
+        if ("2-2".equals(gameState.getCurrentLevel().getDisplayId()) && !room.getWalls().isEmpty()) {
+            double minX = room.getWalls().stream().mapToDouble(Wall::getX).min().orElse(32);
+            double minY = room.getWalls().stream().mapToDouble(Wall::getY).min().orElse(36);
+            double maxX = room.getWalls().stream().mapToDouble(wall -> wall.getX() + wall.getWidth()).max().orElse(Constants.ROOM_WIDTH - 32);
+            double maxY = room.getWalls().stream().mapToDouble(wall -> wall.getY() + wall.getHeight()).max().orElse(Constants.ROOM_HEIGHT - 38);
+            Rectangle innerFloor = new Rectangle(maxX - minX, maxY - minY);
+            innerFloor.setLayoutX(minX);
+            innerFloor.setLayoutY(minY);
+            return innerFloor;
+        }
+
+        Rectangle innerFloor = new Rectangle(Constants.ROOM_WIDTH - 64, Constants.ROOM_HEIGHT - 74);
+        innerFloor.setLayoutX(32);
+        innerFloor.setLayoutY(36);
+        return innerFloor;
     }
 
     private void addTokens() {

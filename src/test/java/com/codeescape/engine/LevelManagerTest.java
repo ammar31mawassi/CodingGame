@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -137,5 +138,62 @@ class LevelManagerTest {
         assertEquals(1, editedLevel.getRoom().getChestRewards().size());
         assertTrue(editedLevel.getRoom().getPuzzle().checkAnswer("int y=8;").isValid());
         assertFalse(editedLevel.getRoom().getPuzzle().checkAnswer("int x = 5;").isValid());
+    }
+
+    @Test
+    void savedQuestionDoorOverrideChangesVariableThenIfLevel(@TempDir Path tempDir) {
+        LevelLayoutOverrideStore store = new LevelLayoutOverrideStore(tempDir);
+        store.save(new LevelLayoutOverride(
+                5,
+                RoomLayoutBuilder.GRID_COLUMNS,
+                RoomLayoutBuilder.GRID_ROWS,
+                new int[][]{
+                        {9, 1, 1, 1, 1, 3, 5, 5, 5, 3, 1, 3},
+                        {8, 6, 4, 6, 0, 2, 4, 2, 0, 6, 64, 6},
+                        {8, 2, 0, 2, 0, 2, 0, 6, 4, 2, 4, 2},
+                        {8, 2, 0, 6, 4, 2, 4, 2, 0, 6, 0, 2},
+                        {8, 2, 0, 2, 0, 0, 0, 6, 4, 4, 2, 2},
+                        {12, 4, 4, 6, 4, 4, 4, 4, 4, 4, 6, 6}
+                },
+                List.of(new LevelLayoutOverride.ChestPlacement(0, 1, false)),
+                List.of(new LevelLayoutOverride.QuestionDoorPlacement(
+                        10,
+                        1,
+                        GridRoomBuilder.Side.BOTTOM,
+                        "Which type of variables can directly be used in an if-statement?",
+                        "____ flag = true; if (flag) {}",
+                        List.of("boolean", "int", "class", "String"),
+                        "boolean",
+                        "true"
+                )),
+                null,
+                null,
+                null,
+                List.of(),
+                true,
+                List.of(new LevelLayoutOverride.TokenPlacement(
+                        "Goal",
+                        TokenType.GOAL,
+                        LevelLayoutOverride.TokenPlacementKind.CHEST,
+                        0,
+                        0,
+                        0
+                ))
+        ));
+
+        LevelManager levelManager = new LevelManager(store);
+        levelManager.loadLevels();
+
+        Level editedLevel = levelManager.getLevel(5);
+
+        assertTrue(editedLevel.getRoom().hasChallengeDoor());
+        assertNotNull(editedLevel.getRoom().getChallengeDoor());
+        assertEquals(
+                RoomLayoutBuilder.GRID_ORIGIN_X + RoomLayoutBuilder.GRID_COLUMNS * RoomLayoutBuilder.GRID_CELL_WIDTH - 26,
+                editedLevel.getRoom().getDoor().getX(),
+                0.001
+        );
+        assertEquals("boolean", editedLevel.getRoom().getChallengeQuestion().getCorrectAnswer());
+        assertEquals("true", editedLevel.getRoom().getChallengeQuestion().getReward().getValue());
     }
 }

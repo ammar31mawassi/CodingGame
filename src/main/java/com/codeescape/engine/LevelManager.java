@@ -243,6 +243,7 @@ public class LevelManager {
                 5,
                 () -> RoomLayoutBuilder.gridTrainingMaze(rewards.size() + 1)
         );
+        MultipleChoiceQuestion challengeQuestion = questionForLevel(5).orElse(null);
 
         Room room = new Room(
                 Constants.ROOM_WIDTH,
@@ -252,7 +253,9 @@ public class LevelManager {
                 mazeLayout.chests(),
                 chestRewardsForLevel(5, rewards),
                 finalChestRewardForLevel(5, ChestReward.goal()),
-                createExitDoor(),
+                createGridExitDoor(),
+                mazeLayout.challengeDoor(),
+                challengeQuestion,
                 puzzle
         );
 
@@ -962,6 +965,12 @@ public class LevelManager {
 
     private Door createExitDoor() {
         return RoomLayoutBuilder.rightExitDoor();
+    }
+
+    private Door createGridExitDoor() {
+        double gridRightEdge = RoomLayoutBuilder.GRID_ORIGIN_X
+                + RoomLayoutBuilder.GRID_COLUMNS * RoomLayoutBuilder.GRID_CELL_WIDTH;
+        return new Door(gridRightEdge - 26, Constants.ROOM_HEIGHT / 2.0 - 59, 52, 118);
     }
 
     private record LevelDefinition(Supplier<Level> factory) {

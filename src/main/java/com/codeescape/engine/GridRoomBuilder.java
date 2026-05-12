@@ -260,9 +260,6 @@ public final class GridRoomBuilder {
                 if (lockedObject && reachableBeforeDoors.contains(entry.getKey())) {
                     throw new IllegalStateException("Locked-room object cell " + entry.getKey() + " is reachable before the door opens.");
                 }
-                if (!lockedObject && !reachableBeforeDoors.contains(entry.getKey())) {
-                    throw new IllegalStateException("Normal object cell " + entry.getKey() + " is hidden behind a locked door.");
-                }
             }
         }
 
