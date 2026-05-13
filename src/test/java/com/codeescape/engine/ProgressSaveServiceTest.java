@@ -31,7 +31,11 @@ class ProgressSaveServiceTest {
 
     @Test
     void savesAndLoadsProgress() {
-        SavedProgress progress = new SavedProgress(GameMode.HARD, 4, 5, 2, true, false);
+        PlayerProgressProfile profile = PlayerProgressProfile.empty()
+                .withAchievement(AchievementId.CLEAN_CODER)
+                .withNotebookEntry("variable-declaration")
+                .withLevelMedal(4, MedalRank.SILVER);
+        SavedProgress progress = new SavedProgress(GameMode.HARD, 4, 5, 2, true, false, profile);
 
         service.save(progress, FINAL_LEVEL);
 
@@ -42,7 +46,7 @@ class ProgressSaveServiceTest {
 
     @Test
     void clearsProgress() {
-        service.save(new SavedProgress(GameMode.NORMAL, 2, 2, 0, true, false), FINAL_LEVEL);
+        service.save(new SavedProgress(GameMode.NORMAL, 2, 2, 0, true, false, PlayerProgressProfile.empty()), FINAL_LEVEL);
 
         service.clear();
 
@@ -82,6 +86,18 @@ class ProgressSaveServiceTest {
 
         writeRawProgress(GameMode.NORMAL.name(), 4, 3, 0, true, false);
         assertTrue(service.load(FINAL_LEVEL).isEmpty());
+    }
+
+    @Test
+    void savesAndLoadsProfileWithoutCheckpoint() {
+        PlayerProgressProfile profile = PlayerProgressProfile.empty()
+                .withAchievement(AchievementId.HELPER_SCOUT)
+                .withNotebookEntry("if-block")
+                .withLevelMedal(6, MedalRank.GOLD);
+
+        service.saveProfile(profile);
+
+        assertEquals(profile, service.loadProfile());
     }
 
     private void writeRawProgress(

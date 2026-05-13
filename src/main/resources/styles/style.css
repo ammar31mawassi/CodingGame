@@ -445,6 +445,19 @@
     -fx-wrap-text: true;
 }
 
+.modal-section-title {
+    -fx-font-size: 19px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f6e0bd;
+}
+
+.achievement-unlocked-copy {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #8ff0a8;
+    -fx-wrap-text: true;
+}
+
 .puzzle-title {
     -fx-font-size: 22px;
     -fx-font-weight: bold;
@@ -492,4 +505,10 @@
     -fx-line-spacing: 4;
     -fx-text-fill: #d9d9d7;
     -fx-text-alignment: center;
+}
+
+.level-complete-reward {
+    -fx-font-size: 19px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #8ee3ff;
 }

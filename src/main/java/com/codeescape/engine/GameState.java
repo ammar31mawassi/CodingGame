@@ -6,6 +6,9 @@ import com.codeescape.model.GameMode;
 import com.codeescape.model.Player;
 import com.codeescape.util.Constants;
 import com.codeescape.validation.VariableDeclarationValidator;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 public class GameState {
     private Player player;
@@ -16,6 +19,7 @@ public class GameState {
     private boolean currentLevelHadMistake;
     private boolean gameFinished;
     private boolean tutorialSeen;
+    private final Map<Integer, Integer> revealedHintCounts = new HashMap<>();
 
     public GameState() {
         player = createPlayer(Constants.PLAYER_START_X, Constants.PLAYER_START_Y);
@@ -76,6 +80,10 @@ public class GameState {
         return bugCount >= 3;
     }
 
+    public boolean hadMistakeOnCurrentLevel() {
+        return currentLevelHadMistake;
+    }
+
     public void rewardCleanLevel() {
         if (!currentLevelHadMistake && bugCount > 0) {
             bugCount--;
@@ -96,6 +104,29 @@ public class GameState {
 
     public void markTutorialSeen() {
         tutorialSeen = true;
+    }
+
+    public Optional<String> revealNextHint() {
+        if (currentLevel == null) {
+            return Optional.empty();
+        }
+
+        int levelNumber = currentLevel.getLevelNumber();
+        java.util.List<String> hints = HintLibrary.hintsFor(currentLevel);
+        int nextIndex = revealedHintCounts.getOrDefault(levelNumber, 0);
+        if (nextIndex >= hints.size()) {
+            return Optional.empty();
+        }
+
+        revealedHintCounts.put(levelNumber, nextIndex + 1);
+        return Optional.of(hints.get(nextIndex));
+    }
+
+    public int revealedHintCountForCurrentLevel() {
+        if (currentLevel == null) {
+            return 0;
+        }
+        return revealedHintCounts.getOrDefault(currentLevel.getLevelNumber(), 0);
     }
 
     private Player createPlayerForLevel(Level level) {

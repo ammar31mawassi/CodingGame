@@ -9,9 +9,11 @@ public record SavedProgress(
         int highestUnlockedLevel,
         int bugCount,
         boolean tutorialSeen,
-        boolean gameFinished
+        boolean gameFinished,
+        PlayerProgressProfile profile
 ) {
     public SavedProgress {
         Objects.requireNonNull(gameMode, "gameMode");
+        profile = profile == null ? PlayerProgressProfile.empty() : profile;
     }
 }

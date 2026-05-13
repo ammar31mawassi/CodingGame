@@ -62,7 +62,8 @@ public final class ProgressPolicy {
                 highestUnlockedLevel,
                 clamp(bugCount, 0, MAX_BUG_COUNT),
                 tutorialSeen,
-                gameFinished
+                gameFinished,
+                progressBase.map(SavedProgress::profile).orElse(PlayerProgressProfile.empty())
         );
     }
 

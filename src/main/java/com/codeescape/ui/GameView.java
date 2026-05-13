@@ -1,8 +1,11 @@
 package com.codeescape.ui;
 
 import com.codeescape.app.GameApp;
+import com.codeescape.engine.AchievementId;
 import com.codeescape.engine.CollisionManager;
 import com.codeescape.engine.GameState;
+import com.codeescape.engine.HintLibrary;
+import com.codeescape.engine.NotebookEntry;
 import com.codeescape.model.Chest;
 import com.codeescape.model.ChestReward;
 import com.codeescape.model.Door;
@@ -88,7 +91,9 @@ public class GameView {
         OBJECT_TERMINAL,
         CHALLENGE,
         TUTORIAL,
-        PAUSE
+        PAUSE,
+        NOTEBOOK,
+        ACHIEVEMENTS
     }
 
     private final GameApp app;
@@ -573,9 +578,32 @@ public class GameView {
                 helperLabel.setMinHeight(Region.USE_PREF_SIZE);
                 content.getChildren().add(helperLabel);
             }
+
+            List<String> hints = HintLibrary.hintsFor(level);
+            int revealedHints = gameState.revealedHintCountForCurrentLevel();
+            if (revealedHints > 0) {
+                Label hintTitle = new Label("Unlocked Hints");
+                hintTitle.getStyleClass().add("modal-section-title");
+                content.getChildren().add(hintTitle);
+                for (int i = 0; i < revealedHints; i++) {
+                    Label hintLabel = new Label((i + 1) + ". " + hints.get(i));
+                    hintLabel.getStyleClass().add("modal-copy");
+                    hintLabel.setWrapText(true);
+                    hintLabel.setPrefWidth(640);
+                    hintLabel.setMaxWidth(640);
+                    content.getChildren().add(hintLabel);
+                }
+            }
+
+            if (revealedHints < hints.size()) {
+                Button hintButton = new Button("Reveal Hint " + (revealedHints + 1));
+                hintButton.getStyleClass().add("pixel-button");
+                hintButton.setOnAction(event -> revealNextHintAndRefreshGoal());
+                content.getChildren().add(hintButton);
+            }
         }
         content.setMaxWidth(640);
-        showModal(content, 720, 300, ModalType.GOAL);
+        showModal(content, 720, goalFound ? 430 : 300, ModalType.GOAL);
     }
 
     private void showStartingOverlays() {
@@ -654,6 +682,15 @@ public class GameView {
         VBox content = new VBox(14, title, resumeButton, mainMenuButton, exitButton);
         content.setMaxWidth(360);
         showModal(content, 420, 300, ModalType.PAUSE, false);
+    }
+
+    private void revealNextHintAndRefreshGoal() {
+        gameState.revealNextHint().ifPresent(hint -> showAdviceToast(
+                "Hint " + gameState.revealedHintCountForCurrentLevel(),
+                hint
+        ));
+        closeModal();
+        showGoalWindow();
     }
 
     private void returnToMainMenuFromPause() {
@@ -1167,7 +1204,18 @@ public class GameView {
             }
         }
 
-        VBox panel = new VBox(10, titleRow, tokenBox, inventoryDescriptionLabel);
+        Button notebookButton = new Button("Notebook");
+        notebookButton.getStyleClass().add("pixel-button");
+        notebookButton.setOnAction(event -> showNotebookWindow());
+
+        Button achievementsButton = new Button("Achievements");
+        achievementsButton.getStyleClass().add("pixel-button");
+        achievementsButton.setOnAction(event -> showAchievementsWindow());
+
+        HBox utilitiesRow = new HBox(10, notebookButton, achievementsButton);
+        utilitiesRow.setAlignment(Pos.CENTER_LEFT);
+
+        VBox panel = new VBox(10, titleRow, tokenBox, inventoryDescriptionLabel, utilitiesRow);
         panel.setPrefWidth(480);
         panel.setMaxWidth(520);
         panel.setMaxHeight(Region.USE_PREF_SIZE);
@@ -1198,6 +1246,92 @@ public class GameView {
         if (inventoryButtonLabel != null) {
             inventoryButtonLabel.setText("Inventory (" + gameState.getInventory().getTokens().size() + ")");
         }
+    }
+
+    private void showNotebookWindow() {
+        hideInventoryPanel();
+        if (activeModal != null) {
+            returnToRootModalState();
+        }
+
+        Label title = new Label("Syntax Notebook");
+        title.getStyleClass().add("modal-title");
+
+        List<NotebookEntry> entries = app.getUnlockedNotebookEntries();
+        VBox entryList = new VBox(12);
+        if (entries.isEmpty()) {
+            Label emptyLabel = new Label("Complete levels to unlock example patterns.");
+            emptyLabel.getStyleClass().add("modal-copy");
+            entryList.getChildren().add(emptyLabel);
+        } else {
+            for (NotebookEntry entry : entries) {
+                Label entryTitle = new Label(entry.title());
+                entryTitle.getStyleClass().add("modal-section-title");
+
+                Label entrySummary = new Label(entry.summary());
+                entrySummary.getStyleClass().add("modal-copy");
+                entrySummary.setWrapText(true);
+
+                Label pattern = new Label(entry.pattern());
+                pattern.getStyleClass().add("answer-preview");
+                pattern.setWrapText(true);
+                pattern.setMaxWidth(680);
+                entryList.getChildren().addAll(entryTitle, entrySummary, pattern);
+            }
+        }
+
+        VBox content = new VBox(14, title, entryList);
+        content.setMaxWidth(700);
+        showModal(content, 780, 560, ModalType.NOTEBOOK);
+    }
+
+    private void showAchievementsWindow() {
+        hideInventoryPanel();
+        if (activeModal != null) {
+            returnToRootModalState();
+        }
+
+        Label title = new Label("Achievements And Medals");
+        title.getStyleClass().add("modal-title");
+
+        VBox content = new VBox(12, title);
+        Label achievementsTitle = new Label("Achievements");
+        achievementsTitle.getStyleClass().add("modal-section-title");
+        content.getChildren().add(achievementsTitle);
+
+        for (AchievementId achievementId : AchievementId.values()) {
+            boolean unlocked = app.getPlayerProfile().hasAchievement(achievementId);
+            Label item = new Label((unlocked ? "Unlocked: " : "Locked: ")
+                    + achievementId.getTitle()
+                    + " - "
+                    + achievementId.getDescription());
+            item.getStyleClass().add(unlocked ? "achievement-unlocked-copy" : "modal-copy");
+            item.setWrapText(true);
+            item.setMaxWidth(680);
+            content.getChildren().add(item);
+        }
+
+        Label medalsTitle = new Label("Level Medals");
+        medalsTitle.getStyleClass().add("modal-section-title");
+        content.getChildren().add(medalsTitle);
+
+        FlowPane medals = new FlowPane(10, 10);
+        medals.setPrefWrapLength(680);
+        app.getAvailableLevels().forEach(level -> {
+            String medalLabel = app.getPlayerProfile().levelMedals().containsKey(level.getLevelNumber())
+                    ? app.getPlayerProfile().levelMedals().get(level.getLevelNumber()).getDisplayName()
+                    : "None";
+            Label medal = new Label(level.getDisplayId() + " " + medalLabel);
+            medal.getStyleClass().add("inventory-token");
+            medals.getChildren().add(medal);
+        });
+        content.getChildren().add(medals);
+
+        showModal(content, 800, 600, ModalType.ACHIEVEMENTS);
+    }
+
+    private void returnToRootModalState() {
+        closeModal();
     }
 
     private Node createGoalIcon() {

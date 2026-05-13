@@ -2,6 +2,12 @@ package com.codeescape.app;
 
 import com.codeescape.engine.GameState;
 import com.codeescape.engine.LevelManager;
+import com.codeescape.engine.LevelCompletionSummary;
+import com.codeescape.engine.MedalRank;
+import com.codeescape.engine.NotebookEntry;
+import com.codeescape.engine.NotebookLibrary;
+import com.codeescape.engine.PlayerProgressProfile;
+import com.codeescape.engine.AchievementId;
 import com.codeescape.engine.ProgressPolicy;
 import com.codeescape.engine.ProgressRun;
 import com.codeescape.engine.ProgressSaveService;
@@ -40,6 +46,8 @@ public class GameApp extends Application {
     private LevelManager levelManager;
     private GameMode selectedGameMode = GameMode.NORMAL;
     private ProgressRun progressRun = ProgressRun.unsaved();
+    private PlayerProgressProfile playerProfile = PlayerProgressProfile.empty();
+    private LevelCompletionSummary lastCompletionSummary = new LevelCompletionSummary(MedalRank.BRONZE, List.of(), List.of());
 
     public GameApp() {
         this(new ProgressSaveService());
@@ -65,6 +73,7 @@ public class GameApp extends Application {
 
     public void showMainMenu() {
         ensureLevelsLoaded();
+        playerProfile = saveService.loadProfile();
         setScene(new MainMenuView(this).createView());
     }
 
@@ -154,6 +163,7 @@ public class GameApp extends Application {
     }
 
     public void showLevelComplete() {
+        updateProfileForCompletedLevel(gameState.getCurrentLevel());
         checkpointCompletedLevel(gameState.getCurrentLevel());
         setScene(new LevelCompleteView(this, gameState.getCurrentLevel()).createView());
     }
@@ -172,6 +182,20 @@ public class GameApp extends Application {
 
     public void showGameFinished() {
         setScene(new GameOverView(this).createView());
+    }
+
+    public PlayerProgressProfile getPlayerProfile() {
+        return playerProfile;
+    }
+
+    public LevelCompletionSummary getLastCompletionSummary() {
+        return lastCompletionSummary;
+    }
+
+    public List<NotebookEntry> getUnlockedNotebookEntries() {
+        return NotebookLibrary.allEntries().stream()
+                .filter(entry -> playerProfile.unlockedNotebookEntries().contains(entry.id()))
+                .toList();
     }
 
     public void showExitThankYouAndClose() {
@@ -252,6 +276,9 @@ public class GameApp extends Application {
         progressRun = run == null ? ProgressRun.unsaved() : run;
         gameState = new GameState();
         gameState.restoreCheckpoint(level, mode, bugCount, tutorialSeen);
+        playerProfile = run != null && run.getProgressBase().isPresent()
+                ? run.getProgressBase().get().profile()
+                : saveService.loadProfile();
         showGameLevel(level);
     }
 
@@ -261,6 +288,26 @@ public class GameApp extends Application {
         }
 
         int finalLevelNumber = getFinalLevelNumber();
+        SavedProgress progress = progressRun.getProgressBase()
+                .orElse(new SavedProgress(
+                        gameState.getGameMode(),
+                        completedLevel.getLevelNumber(),
+                        completedLevel.getLevelNumber(),
+                        gameState.getBugCount(),
+                        gameState.hasSeenTutorial(),
+                        false,
+                        playerProfile
+                ));
+        SavedProgress progressWithProfile = new SavedProgress(
+                progress.gameMode(),
+                progress.currentLevelNumber(),
+                progress.highestUnlockedLevel(),
+                progress.bugCount(),
+                progress.tutorialSeen(),
+                progress.gameFinished(),
+                playerProfile
+        );
+        progressRun = ProgressRun.saveEnabled(Optional.of(progressWithProfile));
         progressRun.checkpointAfterLevelCompletion(
                         gameState.getGameMode(),
                         completedLevel.getLevelNumber(),
@@ -312,5 +359,63 @@ public class GameApp extends Application {
 
     private GameMode normalizeGameMode(GameMode gameMode) {
         return gameMode == null ? GameMode.NORMAL : gameMode;
+    }
+
+    private void updateProfileForCompletedLevel(Level completedLevel) {
+        if (completedLevel == null) {
+            return;
+        }
+
+        PlayerProgressProfile updatedProfile = playerProfile;
+        List<AchievementId> newAchievements = new java.util.ArrayList<>();
+
+        MedalRank medalRank = determineMedal(completedLevel);
+        updatedProfile = updatedProfile.withLevelMedal(completedLevel.getLevelNumber(), medalRank);
+
+        if (!gameState.hadMistakeOnCurrentLevel() && !updatedProfile.hasAchievement(AchievementId.CLEAN_CODER)) {
+            updatedProfile = updatedProfile.withAchievement(AchievementId.CLEAN_CODER);
+            newAchievements.add(AchievementId.CLEAN_CODER);
+        }
+        if (gameState.getGameMode().isHard()
+                && isStageFinalLevel(completedLevel)
+                && !updatedProfile.hasAchievement(AchievementId.HARD_MODE_FINISHER)) {
+            updatedProfile = updatedProfile.withAchievement(AchievementId.HARD_MODE_FINISHER);
+            newAchievements.add(AchievementId.HARD_MODE_FINISHER);
+        }
+        if (completedLevel.getRoom().hasHiddenHelper()
+                && completedLevel.getRoom().isHelperFound()
+                && !updatedProfile.hasAchievement(AchievementId.HELPER_SCOUT)) {
+            updatedProfile = updatedProfile.withAchievement(AchievementId.HELPER_SCOUT);
+            newAchievements.add(AchievementId.HELPER_SCOUT);
+        }
+
+        List<NotebookEntry> newNotebookEntries = NotebookLibrary.unlockedThroughLevel(completedLevel.getLevelNumber()).stream()
+                .filter(entry -> !updatedProfile.unlockedNotebookEntries().contains(entry.id()))
+                .toList();
+        updatedProfile = updatedProfile.withNotebookEntries(
+                newNotebookEntries.stream().map(NotebookEntry::id).toList()
+        );
+
+        playerProfile = updatedProfile;
+        saveService.saveProfile(playerProfile);
+        lastCompletionSummary = new LevelCompletionSummary(medalRank, newAchievements, newNotebookEntries);
+    }
+
+    private MedalRank determineMedal(Level completedLevel) {
+        if (gameState.getGameMode().isHard() && !gameState.hadMistakeOnCurrentLevel()) {
+            return MedalRank.GOLD;
+        }
+        if (!gameState.hadMistakeOnCurrentLevel()) {
+            return MedalRank.SILVER;
+        }
+        return MedalRank.BRONZE;
+    }
+
+    private boolean isStageFinalLevel(Level completedLevel) {
+        return getAvailableLevels().stream()
+                .filter(level -> level.getStageNumber() == completedLevel.getStageNumber())
+                .mapToInt(Level::getStageLevelNumber)
+                .max()
+                .orElse(completedLevel.getStageLevelNumber()) == completedLevel.getStageLevelNumber();
     }
 }

@@ -34,7 +34,7 @@ class ProgressPolicyTest {
 
     @Test
     void replayingEarlierLevelDoesNotRegressSavedProgress() {
-        SavedProgress existing = new SavedProgress(GameMode.NORMAL, 4, 4, 1, true, false);
+        SavedProgress existing = new SavedProgress(GameMode.NORMAL, 4, 4, 1, true, false, PlayerProgressProfile.empty());
 
         SavedProgress progress = ProgressPolicy.checkpointAfterLevelCompletion(
                 Optional.of(existing),
@@ -53,7 +53,7 @@ class ProgressPolicyTest {
     @Test
     void finalLevelCompletionMarksGameFinished() {
         SavedProgress progress = ProgressPolicy.checkpointAfterLevelCompletion(
-                Optional.of(new SavedProgress(GameMode.HARD, FINAL_LEVEL, FINAL_LEVEL, 1, true, false)),
+                Optional.of(new SavedProgress(GameMode.HARD, FINAL_LEVEL, FINAL_LEVEL, 1, true, false, PlayerProgressProfile.empty())),
                 GameMode.HARD,
                 FINAL_LEVEL,
                 FINAL_LEVEL,
@@ -68,7 +68,7 @@ class ProgressPolicyTest {
 
     @Test
     void overwriteConfirmedRunStartsFreshWithoutMutatingExistingProgress() {
-        SavedProgress oldSave = new SavedProgress(GameMode.HARD, 4, 4, 2, true, false);
+        SavedProgress oldSave = new SavedProgress(GameMode.HARD, 4, 4, 2, true, false, PlayerProgressProfile.empty());
         ProgressRun overwriteRun = ProgressRun.saveEnabled(Optional.empty());
 
         assertTrue(overwriteRun.getProgressBase().isEmpty());
