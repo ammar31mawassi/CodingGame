@@ -315,7 +315,7 @@ public class GameApp extends Application {
                         gameState.getBugCount(),
                         gameState.hasSeenTutorial()
                 )
-                .ifPresent(progress -> saveService.save(progress, finalLevelNumber));
+                .ifPresent(updatedProgress -> saveService.save(updatedProgress, finalLevelNumber));
     }
 
     private Optional<SavedProgress> loadSavedProgress() {
@@ -389,8 +389,9 @@ public class GameApp extends Application {
             newAchievements.add(AchievementId.HELPER_SCOUT);
         }
 
+        PlayerProgressProfile profileBeforeNotebookUnlocks = updatedProfile;
         List<NotebookEntry> newNotebookEntries = NotebookLibrary.unlockedThroughLevel(completedLevel.getLevelNumber()).stream()
-                .filter(entry -> !updatedProfile.unlockedNotebookEntries().contains(entry.id()))
+                .filter(entry -> !profileBeforeNotebookUnlocks.unlockedNotebookEntries().contains(entry.id()))
                 .toList();
         updatedProfile = updatedProfile.withNotebookEntries(
                 newNotebookEntries.stream().map(NotebookEntry::id).toList()
