@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProgressSaveServiceTest {
-    private static final int FINAL_LEVEL = 19;
+    private static final int FINAL_LEVEL = 24;
     private Preferences preferences;
     private ProgressSaveService service;
 
@@ -81,7 +81,7 @@ class ProgressSaveServiceTest {
         writeRawProgress(GameMode.NORMAL.name(), 0, 2, 0, true, false);
         assertTrue(service.load(FINAL_LEVEL).isEmpty());
 
-        writeRawProgress(GameMode.NORMAL.name(), 20, 20, 0, true, false);
+        writeRawProgress(GameMode.NORMAL.name(), FINAL_LEVEL + 1, FINAL_LEVEL + 1, 0, true, false);
         assertTrue(service.load(FINAL_LEVEL).isEmpty());
 
         writeRawProgress(GameMode.NORMAL.name(), 4, 3, 0, true, false);
@@ -98,6 +98,17 @@ class ProgressSaveServiceTest {
         service.saveProfile(profile);
 
         assertEquals(profile, service.loadProfile());
+    }
+
+    @Test
+    void loadsFinishedLegacyCampaignAfterLevelCountIncrease() {
+        writeRawProgress(GameMode.NORMAL.name(), 19, 19, 0, true, true);
+
+        Optional<SavedProgress> loaded = service.load(FINAL_LEVEL);
+
+        assertTrue(loaded.isPresent());
+        assertTrue(loaded.get().gameFinished());
+        assertEquals(19, loaded.get().currentLevelNumber());
     }
 
     private void writeRawProgress(

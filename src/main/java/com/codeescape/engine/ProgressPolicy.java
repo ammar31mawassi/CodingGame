@@ -80,9 +80,12 @@ public final class ProgressPolicy {
             return false;
         }
 
-        return !progress.gameFinished()
-                || (progress.currentLevelNumber() == finalLevelNumber
-                && progress.highestUnlockedLevel() == finalLevelNumber);
+        if (!progress.gameFinished()) {
+            return true;
+        }
+
+        return progress.currentLevelNumber() <= finalLevelNumber
+                && progress.highestUnlockedLevel() <= finalLevelNumber;
     }
 
     private static int clamp(int value, int minimum, int maximum) {

@@ -1,10 +1,14 @@
 package com.codeescape.engine;
 
 import com.codeescape.model.Chest;
+import com.codeescape.model.Door;
 import com.codeescape.model.Level;
+import com.codeescape.model.Player;
+import com.codeescape.model.ProgrammableObject;
 import com.codeescape.model.Token;
 import com.codeescape.model.TokenType;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.Test;
@@ -22,12 +26,12 @@ class LevelManagerTest {
 
         levelManager.loadLevels();
 
-        assertEquals(19, levelManager.getLevels().size());
-        assertEquals(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19), levelManager.getLevels().stream()
+        assertEquals(24, levelManager.getLevels().size());
+        assertEquals(List.of(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24), levelManager.getLevels().stream()
                 .map(level -> level.getLevelNumber())
                 .toList());
         assertEquals("1-1", levelManager.getLevels().get(0).getDisplayId());
-        assertEquals("5-3", levelManager.getLevels().get(18).getDisplayId());
+        assertEquals("5-4", levelManager.getLevels().get(23).getDisplayId());
     }
 
     @Test
@@ -189,11 +193,109 @@ class LevelManagerTest {
         assertTrue(editedLevel.getRoom().hasChallengeDoor());
         assertNotNull(editedLevel.getRoom().getChallengeDoor());
         assertEquals(
-                RoomLayoutBuilder.GRID_ORIGIN_X + RoomLayoutBuilder.GRID_COLUMNS * RoomLayoutBuilder.GRID_CELL_WIDTH - 26,
+                RoomLayoutBuilder.GRID_ORIGIN_X + RoomLayoutBuilder.GRID_COLUMNS * RoomLayoutBuilder.GRID_CELL_WIDTH - 52,
                 editedLevel.getRoom().getDoor().getX(),
                 0.001
         );
         assertEquals("boolean", editedLevel.getRoom().getChallengeQuestion().getCorrectAnswer());
         assertEquals("true", editedLevel.getRoom().getChallengeQuestion().getReward().getValue());
+    }
+
+    @Test
+    void builtInVisibleRoomObjectsDoNotOverlap() {
+        LevelManager levelManager = new LevelManager(LevelLayoutOverrideStore.disabled());
+        levelManager.loadLevels();
+
+        for (Level level : levelManager.getLevels()) {
+            List<Rect> rects = new ArrayList<>();
+            level.getRoom().getTokens().forEach(token -> rects.add(rect(level, "token " + token.getValue(), token)));
+            level.getRoom().getChests().forEach(chest -> rects.add(rect(level, "chest", chest)));
+            level.getRoom().getProgrammableObjects().forEach(object -> rects.add(rect(level, "object " + object.getDisplayName(), object)));
+            rects.add(rect(level, "exit door", level.getRoom().getDoor()));
+            if (level.getRoom().getChallengeDoor() != null) {
+                rects.add(rect(level, "challenge door", level.getRoom().getChallengeDoor()));
+            }
+
+            for (int i = 0; i < rects.size(); i++) {
+                for (int j = i + 1; j < rects.size(); j++) {
+                    Rect first = rects.get(i);
+                    Rect second = rects.get(j);
+                    assertFalse(first.intersects(second), () -> first.name() + " overlaps " + second.name());
+                }
+            }
+        }
+    }
+
+    @Test
+    void builtInExitDoorsSitOnGridRightEdge() {
+        LevelManager levelManager = new LevelManager(LevelLayoutOverrideStore.disabled());
+        levelManager.loadLevels();
+
+        double gridExitX = RoomLayoutBuilder.GRID_ORIGIN_X
+                + RoomLayoutBuilder.GRID_COLUMNS * RoomLayoutBuilder.GRID_CELL_WIDTH
+                - 52;
+
+        for (Level level : levelManager.getLevels()) {
+            assertEquals(gridExitX, level.getRoom().getDoor().getX(), 0.001, level.getDisplayId());
+        }
+    }
+
+    @Test
+    void visibleOverrideTokensDoNotOccupySpawnCell(@TempDir Path tempDir) {
+        LevelLayoutOverrideStore store = new LevelLayoutOverrideStore(tempDir);
+        store.save(new LevelLayoutOverride(
+                1,
+                RoomLayoutBuilder.GRID_COLUMNS,
+                RoomLayoutBuilder.GRID_ROWS,
+                new int[RoomLayoutBuilder.GRID_ROWS][RoomLayoutBuilder.GRID_COLUMNS],
+                List.of(),
+                List.of(),
+                null,
+                null,
+                null,
+                List.of(),
+                true,
+                List.of(new LevelLayoutOverride.TokenPlacement(
+                        "int",
+                        TokenType.CODE,
+                        LevelLayoutOverride.TokenPlacementKind.VISIBLE,
+                        0,
+                        0,
+                        0
+                ))
+        ));
+        LevelManager levelManager = new LevelManager(store);
+        levelManager.loadLevels();
+        Level level = levelManager.getLevel(1);
+        GameState gameState = new GameState();
+        gameState.resetForLevel(level);
+        Player player = gameState.getPlayer();
+
+        assertFalse(level.getRoom().getTokens().get(0).intersects(player));
+    }
+
+    private Rect rect(Level level, String label, Token token) {
+        return new Rect(level.getDisplayId() + " " + label, token.getX(), token.getY(), token.getWidth(), token.getHeight());
+    }
+
+    private Rect rect(Level level, String label, Chest chest) {
+        return new Rect(level.getDisplayId() + " " + label, chest.getX(), chest.getY(), chest.getWidth(), chest.getHeight());
+    }
+
+    private Rect rect(Level level, String label, Door door) {
+        return new Rect(level.getDisplayId() + " " + label, door.getX(), door.getY(), door.getWidth(), door.getHeight());
+    }
+
+    private Rect rect(Level level, String label, ProgrammableObject object) {
+        return new Rect(level.getDisplayId() + " " + label, object.getX(), object.getY(), object.getWidth(), object.getHeight());
+    }
+
+    private record Rect(String name, double x, double y, double width, double height) {
+        private boolean intersects(Rect other) {
+            return x < other.x + other.width
+                    && x + width > other.x
+                    && y < other.y + other.height
+                    && y + height > other.y;
+        }
     }
 }

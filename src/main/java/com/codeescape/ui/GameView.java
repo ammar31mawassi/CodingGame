@@ -5,7 +5,9 @@ import com.codeescape.engine.AchievementId;
 import com.codeescape.engine.CollisionManager;
 import com.codeescape.engine.GameState;
 import com.codeescape.engine.HintLibrary;
+import com.codeescape.engine.MedalRank;
 import com.codeescape.engine.NotebookEntry;
+import com.codeescape.engine.RoomLayoutBuilder;
 import com.codeescape.model.Chest;
 import com.codeescape.model.ChestReward;
 import com.codeescape.model.Door;
@@ -47,6 +49,7 @@ import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -345,6 +348,7 @@ public class GameView {
         );
         for (Token token : collectedTokens) {
             showPickupMessage(token);
+            maybeRewardHelperDiscovery(token.getType());
         }
 
         ChestReward reward = collisionManager.handleChestInteraction(
@@ -354,9 +358,11 @@ public class GameView {
         );
         if (reward != null) {
             showPickupMessage(reward);
+            maybeRewardHelperDiscovery(reward.getType());
         }
 
         if (!collectedTokens.isEmpty() || reward != null) {
+            SoundManager.play(SoundEffect.PICKUP);
             refreshInventoryPanel();
             refreshActiveModal();
         }
@@ -410,7 +416,10 @@ public class GameView {
             choiceButton.setTextOverrun(OverrunStyle.CLIP);
             choiceButton.setMinHeight(Region.USE_PREF_SIZE);
             choiceButton.setMaxWidth(Double.MAX_VALUE);
-            choiceButton.setOnAction(event -> answerChallengeQuestion(choice));
+            choiceButton.setOnAction(event -> {
+                SoundManager.play(SoundEffect.BUTTON);
+                answerChallengeQuestion(choice);
+            });
             choices.getChildren().add(choiceButton);
         }
 
@@ -463,6 +472,7 @@ public class GameView {
             room.getChallengeDoor().unlock();
             room.collectReward(reward, gameState.getInventory());
             closeModal();
+            SoundManager.play(SoundEffect.SUCCESS);
             setPickupMessage("Correct! Room door is open.", "success-message");
             if (reward != null) {
                 setPickupMessage(doorRewardMessage(reward), "pickup-message");
@@ -492,6 +502,7 @@ public class GameView {
                 result -> {
                     gameState.getCurrentLevel().getRoom().getDoor().unlock();
                     closeModal();
+                    SoundManager.play(SoundEffect.SUCCESS);
                     setPickupMessage("'" + result.getMessage() + "' Door is now open!", "success-message");
                     renderRoom();
                 },
@@ -532,6 +543,7 @@ public class GameView {
                 result -> {
                     programmableObject.activate();
                     closeModal();
+                    SoundManager.play(SoundEffect.SUCCESS);
                     setPickupMessage(programmableObject.getDisplayName() + " unlocked!", "success-message");
                     renderRoom();
                 },
@@ -569,16 +581,6 @@ public class GameView {
             doorLabel.getStyleClass().add("modal-copy");
             content.getChildren().add(doorLabel);
 
-            if (shouldShowGoalHelper(level)) {
-                Label helperLabel = new Label(level.getGoalHelper());
-                helperLabel.getStyleClass().add("modal-helper-copy");
-                helperLabel.setWrapText(true);
-                helperLabel.setPrefWidth(640);
-                helperLabel.setMaxWidth(640);
-                helperLabel.setMinHeight(Region.USE_PREF_SIZE);
-                content.getChildren().add(helperLabel);
-            }
-
             List<String> hints = HintLibrary.hintsFor(level);
             int revealedHints = gameState.revealedHintCountForCurrentLevel();
             if (revealedHints > 0) {
@@ -598,7 +600,10 @@ public class GameView {
             if (revealedHints < hints.size()) {
                 Button hintButton = new Button("Reveal Hint " + (revealedHints + 1));
                 hintButton.getStyleClass().add("pixel-button");
-                hintButton.setOnAction(event -> revealNextHintAndRefreshGoal());
+                hintButton.setOnAction(event -> {
+                    SoundManager.play(SoundEffect.BUTTON);
+                    revealNextHintAndRefreshGoal();
+                });
                 content.getChildren().add(hintButton);
             }
         }
@@ -667,17 +672,26 @@ public class GameView {
         Button resumeButton = new Button("Resume");
         resumeButton.getStyleClass().add("pixel-button");
         resumeButton.setMaxWidth(Double.MAX_VALUE);
-        resumeButton.setOnAction(event -> closeModal());
+        resumeButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            closeModal();
+        });
 
         Button mainMenuButton = new Button("Main Menu");
         mainMenuButton.getStyleClass().add("pixel-button");
         mainMenuButton.setMaxWidth(Double.MAX_VALUE);
-        mainMenuButton.setOnAction(event -> returnToMainMenuFromPause());
+        mainMenuButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            returnToMainMenuFromPause();
+        });
 
         Button exitButton = new Button("Exit");
         exitButton.getStyleClass().add("pixel-button");
         exitButton.setMaxWidth(Double.MAX_VALUE);
-        exitButton.setOnAction(event -> exitFromPause());
+        exitButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            exitFromPause();
+        });
 
         VBox content = new VBox(14, title, resumeButton, mainMenuButton, exitButton);
         content.setMaxWidth(360);
@@ -685,10 +699,13 @@ public class GameView {
     }
 
     private void revealNextHintAndRefreshGoal() {
-        gameState.revealNextHint().ifPresent(hint -> showAdviceToast(
-                "Hint " + gameState.revealedHintCountForCurrentLevel(),
-                hint
-        ));
+        gameState.revealNextHint().ifPresent(hint -> {
+            SoundManager.play(SoundEffect.HINT);
+            showAdviceToast(
+                    "Hint " + gameState.revealedHintCountForCurrentLevel(),
+                    hint
+            );
+        });
         closeModal();
         showGoalWindow();
     }
@@ -763,7 +780,10 @@ public class GameView {
         if (showCloseButton) {
             Button closeButton = new Button("X");
             closeButton.getStyleClass().add("close-button");
-            closeButton.setOnAction(event -> closeModal());
+            closeButton.setOnAction(event -> {
+                SoundManager.play(SoundEffect.BUTTON);
+                closeModal();
+            });
 
             HBox closeRow = new HBox(closeButton);
             closeRow.setAlignment(Pos.TOP_LEFT);
@@ -815,7 +835,7 @@ public class GameView {
 
     private Rectangle createInnerFloor() {
         Room room = gameState.getCurrentLevel().getRoom();
-        if ("2-2".equals(gameState.getCurrentLevel().getDisplayId()) && !room.getWalls().isEmpty()) {
+        if (!room.getWalls().isEmpty()) {
             double minX = room.getWalls().stream().mapToDouble(Wall::getX).min().orElse(32);
             double minY = room.getWalls().stream().mapToDouble(Wall::getY).min().orElse(36);
             double maxX = room.getWalls().stream().mapToDouble(wall -> wall.getX() + wall.getWidth()).max().orElse(Constants.ROOM_WIDTH - 32);
@@ -826,9 +846,12 @@ public class GameView {
             return innerFloor;
         }
 
-        Rectangle innerFloor = new Rectangle(Constants.ROOM_WIDTH - 64, Constants.ROOM_HEIGHT - 74);
-        innerFloor.setLayoutX(32);
-        innerFloor.setLayoutY(36);
+        Rectangle innerFloor = new Rectangle(
+                RoomLayoutBuilder.GRID_COLUMNS * RoomLayoutBuilder.GRID_CELL_WIDTH,
+                RoomLayoutBuilder.GRID_ROWS * RoomLayoutBuilder.GRID_CELL_HEIGHT
+        );
+        innerFloor.setLayoutX(RoomLayoutBuilder.GRID_ORIGIN_X);
+        innerFloor.setLayoutY(RoomLayoutBuilder.GRID_ORIGIN_Y);
         return innerFloor;
     }
 
@@ -858,13 +881,39 @@ public class GameView {
     }
 
     private void addWalls() {
+        addGridBoundaryWalls();
         for (Wall wall : gameState.getCurrentLevel().getRoom().getWalls()) {
-            Rectangle wallShape = new Rectangle(wall.getWidth(), wall.getHeight());
-            wallShape.setLayoutX(wall.getX());
-            wallShape.setLayoutY(wall.getY());
-            wallShape.getStyleClass().add("room-wall");
-            gamePane.getChildren().add(wallShape);
+            gamePane.getChildren().add(createWallShape(wall.getX(), wall.getY(), wall.getWidth(), wall.getHeight()));
         }
+    }
+
+    private void addGridBoundaryWalls() {
+        double left = gridLeft();
+        double top = gridTop();
+        double right = gridRight();
+        double bottom = gridBottom();
+        double thickness = RoomLayoutBuilder.WALL_THICKNESS;
+        Door door = gameState.getCurrentLevel().getRoom().getDoor();
+        double doorTop = Math.max(top, door.getY());
+        double doorBottom = Math.min(bottom, door.getY() + door.getHeight());
+
+        gamePane.getChildren().add(createWallShape(left - thickness / 2.0, top - thickness / 2.0, right - left, thickness));
+        gamePane.getChildren().add(createWallShape(left - thickness / 2.0, top - thickness / 2.0, thickness, bottom - top + thickness));
+        gamePane.getChildren().add(createWallShape(left - thickness / 2.0, bottom - thickness / 2.0, right - left, thickness));
+        if (doorTop > top) {
+            gamePane.getChildren().add(createWallShape(right - thickness / 2.0, top - thickness / 2.0, thickness, doorTop - top));
+        }
+        if (doorBottom < bottom) {
+            gamePane.getChildren().add(createWallShape(right - thickness / 2.0, doorBottom, thickness, bottom - doorBottom));
+        }
+    }
+
+    private Rectangle createWallShape(double x, double y, double width, double height) {
+        Rectangle wallShape = new Rectangle(width, height);
+        wallShape.setLayoutX(x);
+        wallShape.setLayoutY(y);
+        wallShape.getStyleClass().add("room-wall");
+        return wallShape;
     }
 
     private void addChests() {
@@ -1094,6 +1143,7 @@ public class GameView {
         terminal.setPrefSize(TERMINAL_WIDTH, TERMINAL_HEIGHT);
         terminal.getStyleClass().add("terminal-tile");
         terminal.setOnMouseClicked(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
             openCodeBuilder();
             event.consume();
         });
@@ -1109,7 +1159,10 @@ public class GameView {
         Button button = new Button();
         button.setGraphic(createGoalIcon());
         button.getStyleClass().add("goal-icon-button");
-        button.setOnAction(event -> showGoalWindow());
+        button.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            showGoalWindow();
+        });
         return button;
     }
 
@@ -1138,6 +1191,7 @@ public class GameView {
         background.setFill(Color.web("#8a5a35"));
         background.getStyleClass().add("inventory-toggle-shape");
         background.setOnMouseClicked(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
             toggleInventoryPanel();
             event.consume();
         });
@@ -1149,6 +1203,7 @@ public class GameView {
         inventoryButtonLabel.setAlignment(Pos.CENTER);
         inventoryButtonLabel.getStyleClass().add("inventory-toggle-text");
         inventoryButtonLabel.setOnMouseClicked(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
             toggleInventoryPanel();
             event.consume();
         });
@@ -1175,7 +1230,10 @@ public class GameView {
 
         Button closeButton = new Button("X");
         closeButton.getStyleClass().add("close-button");
-        closeButton.setOnAction(event -> hideInventoryPanel());
+        closeButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            hideInventoryPanel();
+        });
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
@@ -1206,11 +1264,17 @@ public class GameView {
 
         Button notebookButton = new Button("Notebook");
         notebookButton.getStyleClass().add("pixel-button");
-        notebookButton.setOnAction(event -> showNotebookWindow());
+        notebookButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            showNotebookWindow();
+        });
 
         Button achievementsButton = new Button("Achievements");
         achievementsButton.getStyleClass().add("pixel-button");
-        achievementsButton.setOnAction(event -> showAchievementsWindow());
+        achievementsButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            showAchievementsWindow();
+        });
 
         HBox utilitiesRow = new HBox(10, notebookButton, achievementsButton);
         utilitiesRow.setAlignment(Pos.CENTER_LEFT);
@@ -1308,6 +1372,8 @@ public class GameView {
             item.getStyleClass().add(unlocked ? "achievement-unlocked-copy" : "modal-copy");
             item.setWrapText(true);
             item.setMaxWidth(680);
+            item.setMinHeight(Region.USE_PREF_SIZE);
+            item.setTextOverrun(OverrunStyle.CLIP);
             content.getChildren().add(item);
         }
 
@@ -1317,15 +1383,17 @@ public class GameView {
 
         FlowPane medals = new FlowPane(10, 10);
         medals.setPrefWrapLength(680);
-        app.getAvailableLevels().forEach(level -> {
-            String medalLabel = app.getPlayerProfile().levelMedals().containsKey(level.getLevelNumber())
-                    ? app.getPlayerProfile().levelMedals().get(level.getLevelNumber()).getDisplayName()
-                    : "None";
-            Label medal = new Label(level.getDisplayId() + " " + medalLabel);
-            medal.getStyleClass().add("inventory-token");
-            medals.getChildren().add(medal);
-        });
+        app.getAvailableLevels().stream()
+                .sorted(Comparator.comparingInt(Level::getStageNumber)
+                        .thenComparingInt(Level::getStageLevelNumber))
+                .forEach(level -> {
+                    MedalRank medalRank = app.getPlayerProfile().levelMedals().get(level.getLevelNumber());
+                    medals.getChildren().add(medalRank == null
+                            ? MedalBadgeView.createEmptyLevelBadge(level.getDisplayId())
+                            : MedalBadgeView.createLevelBadge(level.getDisplayId(), medalRank));
+                });
         content.getChildren().add(medals);
+        content.setMaxWidth(700);
 
         showModal(content, 800, 600, ModalType.ACHIEVEMENTS);
     }
@@ -1365,11 +1433,27 @@ public class GameView {
 
     private void keepPlayerInsideRoom() {
         Player player = gameState.getPlayer();
-        double maxX = gameState.getCurrentLevel().getRoom().getWidth() - player.getWidth();
-        double maxY = gameState.getCurrentLevel().getRoom().getHeight() - player.getHeight();
-        double clampedX = Math.max(32, Math.min(player.getX(), maxX - 32));
-        double clampedY = Math.max(36, Math.min(player.getY(), maxY - 36));
+        double clampedX = Math.max(gridLeft(), Math.min(player.getX(), gridRight() - player.getWidth()));
+        double clampedY = Math.max(gridTop(), Math.min(player.getY(), gridBottom() - player.getHeight()));
         player.setPosition(clampedX, clampedY);
+    }
+
+    private double gridLeft() {
+        return RoomLayoutBuilder.GRID_ORIGIN_X;
+    }
+
+    private double gridTop() {
+        return RoomLayoutBuilder.GRID_ORIGIN_Y;
+    }
+
+    private double gridRight() {
+        return RoomLayoutBuilder.GRID_ORIGIN_X
+                + RoomLayoutBuilder.GRID_COLUMNS * RoomLayoutBuilder.GRID_CELL_WIDTH;
+    }
+
+    private double gridBottom() {
+        return RoomLayoutBuilder.GRID_ORIGIN_Y
+                + RoomLayoutBuilder.GRID_ROWS * RoomLayoutBuilder.GRID_CELL_HEIGHT;
     }
 
     private void maybeAdvanceLevel() {
@@ -1399,6 +1483,7 @@ public class GameView {
 
     private void recordMistake() {
         gameState.addBug();
+        SoundManager.play(SoundEffect.BUG);
         setPickupMessage("OH NO! A BUG!", "bug-message");
         renderRoom();
         if (gameState.hasTooManyBugs()) {
@@ -1423,15 +1508,6 @@ public class GameView {
         return Constants.ROOM_HEIGHT - TERMINAL_HEIGHT - TERMINAL_MARGIN_BOTTOM;
     }
 
-    private boolean shouldShowGoalHelper(Level level) {
-        if (level.getGoalHelper().isBlank()) {
-            return false;
-        }
-
-        Room room = level.getRoom();
-        return !room.hasHiddenHelper() || room.isHelperFound();
-    }
-
     private void refreshActiveModal() {
         if (activeModalType == ModalType.TERMINAL && activeCodeBuilderView != null) {
             activeCodeBuilderView.refresh(gameState.getCurrentLevel().getRoom().isGoalFound());
@@ -1451,6 +1527,17 @@ public class GameView {
 
         String label = token.getType() == TokenType.GOAL ? "Found: Goal" : "Found: Helper";
         setPickupMessage(label, "pickup-message");
+    }
+
+    private void maybeRewardHelperDiscovery(TokenType tokenType) {
+        if (tokenType != TokenType.HELPER) {
+            return;
+        }
+
+        gameState.revealNextHint().ifPresent(hint -> {
+            SoundManager.play(SoundEffect.HINT);
+            showAdviceToast("Helper Hint", hint);
+        });
     }
 
     private void showPickupMessage(ChestReward reward) {

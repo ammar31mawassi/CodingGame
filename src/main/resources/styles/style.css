@@ -1,6 +1,74 @@
 .main-menu {
     -fx-background-color: #101419;
-    -fx-padding: 28;
+    -fx-padding: 18 28 22 28;
+}
+
+.main-menu-header {
+    -fx-padding: 0 0 4 0;
+}
+
+.main-menu-scroll {
+    -fx-background: transparent;
+    -fx-background-color: transparent;
+    -fx-padding: 0 0 8 0;
+}
+
+.main-menu-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.main-menu-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 16px;
+    -fx-padding: 0 0 0 4;
+}
+
+.main-menu-scroll .scroll-bar:vertical .track {
+    -fx-background-color: #171c24;
+    -fx-border-color: #3d4753;
+    -fx-border-width: 2;
+}
+
+.main-menu-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: #5e6478;
+    -fx-border-color: #f1ce54;
+    -fx-border-width: 2;
+}
+
+.main-menu-scroll .scroll-bar:vertical .increment-button,
+.main-menu-scroll .scroll-bar:vertical .decrement-button {
+    -fx-background-color: #171c24;
+    -fx-border-color: #3d4753;
+    -fx-border-width: 1;
+    -fx-padding: 2;
+}
+
+.main-menu-scroll .scroll-bar:vertical .increment-arrow,
+.main-menu-scroll .scroll-bar:vertical .decrement-arrow {
+    -fx-background-color: #f1ce54;
+}
+
+.level-selector {
+    -fx-padding: 4 0 22 0;
+}
+
+.level-selector-wrapper {
+    -fx-padding: 0;
+}
+
+.stage-section {
+    -fx-padding: 8 18 10 18;
+    -fx-border-color: rgba(94, 100, 120, 0.34);
+    -fx-border-width: 2 0 0 0;
+}
+
+.level-select-button {
+    -fx-min-width: 72px;
+    -fx-pref-width: 72px;
+    -fx-max-width: 72px;
+    -fx-min-height: 44px;
+    -fx-pref-height: 44px;
+    -fx-max-height: 44px;
 }
 
 .admin-view {
@@ -26,7 +94,7 @@
 }
 
 .title {
-    -fx-font-size: 46px;
+    -fx-font-size: 44px;
     -fx-font-weight: bold;
     -fx-text-fill: #f6d65b;
     -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.55), 12, 0, 0, 3);
@@ -43,6 +111,13 @@
     -fx-font-weight: bold;
     -fx-text-fill: #8ee3ff;
     -fx-padding: 6 0 0 0;
+}
+
+.stage-summary {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #b9bdc9;
+    -fx-text-alignment: center;
 }
 
 .game-screen {
@@ -79,6 +154,7 @@
     -fx-background-color: #f1ce54;
     -fx-border-color: #c4932f;
     -fx-border-width: 0 0 4 4;
+    -fx-padding: 1 7 2 7;
 }
 
 .room-goal-token {
@@ -92,9 +168,10 @@
 }
 
 .room-token-text {
-    -fx-font-size: 16px;
+    -fx-font-size: 15px;
     -fx-font-weight: bold;
     -fx-text-fill: #33323a;
+    -fx-text-alignment: center;
 }
 
 .room-wall {
@@ -119,7 +196,7 @@
 }
 
 .room-chest-text {
-    -fx-font-size: 18px;
+    -fx-font-size: 16px;
     -fx-font-weight: bold;
     -fx-text-fill: #f1ce54;
 }
@@ -216,7 +293,7 @@
 }
 
 .terminal-text {
-    -fx-font-size: 18px;
+    -fx-font-size: 17px;
     -fx-font-weight: bold;
     -fx-text-fill: #294135;
 }
@@ -284,7 +361,10 @@
 
 .pixel-button:disabled,
 .token-button:disabled {
-    -fx-opacity: 0.4;
+    -fx-opacity: 0.72;
+    -fx-background-color: #6b612f;
+    -fx-border-color: #4b431f;
+    -fx-text-fill: #171821;
 }
 
 .pixel-button:hover,
@@ -312,7 +392,7 @@
 .inventory-toggle-shape {
     -fx-fill: #8a5a35;
     -fx-stroke: #5d3828;
-    -fx-stroke-width: 0 0 0 0;
+    -fx-stroke-width: 0;
     -fx-cursor: hand;
 }
 
@@ -348,6 +428,7 @@
     -fx-border-color: #c4932f;
     -fx-border-width: 0 0 4 4;
     -fx-cursor: hand;
+    -fx-text-alignment: center;
 }
 
 .inventory-description {
@@ -426,22 +507,15 @@
 }
 
 .modal-title {
-    -fx-font-size: 30px;
+    -fx-font-size: 28px;
     -fx-font-weight: bold;
     -fx-text-fill: #f1ce54;
 }
 
 .modal-copy {
-    -fx-font-size: 20px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #f1f1ec;
-    -fx-wrap-text: true;
-}
-
-.modal-helper-copy {
     -fx-font-size: 18px;
     -fx-font-weight: bold;
-    -fx-text-fill: #69d7ff;
+    -fx-text-fill: #f1f1ec;
     -fx-wrap-text: true;
 }
 
@@ -498,6 +572,8 @@
 .level-complete-concept {
     -fx-font-size: 20px;
     -fx-text-fill: #b9bdc9;
+    -fx-alignment: center;
+    -fx-text-alignment: center;
 }
 
 .level-complete-explanation {
@@ -511,4 +587,92 @@
     -fx-font-size: 19px;
     -fx-font-weight: bold;
     -fx-text-fill: #8ee3ff;
+}
+
+.level-complete-medal-row {
+    -fx-padding: 4 0 2 0;
+}
+
+.medal-badge {
+    -fx-background-color: rgba(17, 19, 28, 0.82);
+    -fx-border-width: 3;
+    -fx-padding: 5 10 6 9;
+}
+
+.medal-badge-gold {
+    -fx-border-color: #f1ce54;
+}
+
+.medal-badge-silver {
+    -fx-border-color: #cbd4df;
+}
+
+.medal-badge-bronze {
+    -fx-border-color: #c7834a;
+}
+
+.medal-badge-empty {
+    -fx-background-color: rgba(40, 43, 54, 0.78);
+    -fx-border-color: #5e6478;
+    -fx-border-width: 3;
+    -fx-padding: 6 10 7 10;
+}
+
+.medal-badge-compact {
+    -fx-padding: 1 6 2 5;
+}
+
+.medal-badge-level {
+    -fx-padding: 4 9 5 8;
+}
+
+.medal-label {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f1f1ec;
+}
+
+.medal-badge-gold .medal-label {
+    -fx-text-fill: #f6d65b;
+}
+
+.medal-badge-silver .medal-label {
+    -fx-text-fill: #dce7f2;
+}
+
+.medal-badge-bronze .medal-label {
+    -fx-text-fill: #e3a36d;
+}
+
+.medal-badge-empty .medal-label {
+    -fx-text-fill: #8e94a7;
+}
+
+.medal-disc {
+    -fx-stroke: rgba(255, 255, 255, 0.45);
+    -fx-stroke-width: 2;
+}
+
+.medal-disc-gold {
+    -fx-fill: #f1ce54;
+}
+
+.medal-disc-silver {
+    -fx-fill: #cbd4df;
+}
+
+.medal-disc-bronze {
+    -fx-fill: #c7834a;
+}
+
+.medal-ribbon {
+    -fx-fill: #7d394c;
+    -fx-stroke: #3e1e2a;
+    -fx-stroke-width: 1;
+}
+
+.medal-symbol {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #20232c;
 }

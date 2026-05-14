@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class GameStateTest {
     @Test
-    void variableThenIfLevelStartsPlayerInsideGridCellZeroZero(@TempDir Path tempDir) {
+    void allLevelsStartPlayerInsideGridCellZeroZero(@TempDir Path tempDir) {
         LevelLayoutOverrideStore store = new LevelLayoutOverrideStore(tempDir);
         store.save(new LevelLayoutOverride(
                 5,
@@ -30,21 +30,24 @@ class GameStateTest {
         ));
         LevelManager levelManager = new LevelManager(store);
         levelManager.loadLevels();
-        Level level = levelManager.getLevel(5);
 
-        GameState gameState = new GameState();
-        gameState.resetForLevel(level);
+        for (Level level : levelManager.getLevels()) {
+            GameState gameState = new GameState();
+            gameState.resetForLevel(level);
 
-        assertEquals(
-                RoomLayoutBuilder.GRID_ORIGIN_X + (RoomLayoutBuilder.GRID_CELL_WIDTH - gameState.getPlayer().getWidth()) / 2.0,
-                gameState.getPlayer().getX(),
-                0.001
-        );
-        assertEquals(
-                RoomLayoutBuilder.GRID_ORIGIN_Y + (RoomLayoutBuilder.GRID_CELL_HEIGHT - gameState.getPlayer().getHeight()) / 2.0,
-                gameState.getPlayer().getY(),
-                0.001
-        );
-        assertFalse(new CollisionManager().hasWallCollision(gameState.getPlayer(), level.getRoom()));
+            assertEquals(
+                    RoomLayoutBuilder.GRID_ORIGIN_X + (RoomLayoutBuilder.GRID_CELL_WIDTH - gameState.getPlayer().getWidth()) / 2.0,
+                    gameState.getPlayer().getX(),
+                    0.001,
+                    level.getDisplayId() + " player x"
+            );
+            assertEquals(
+                    RoomLayoutBuilder.GRID_ORIGIN_Y + (RoomLayoutBuilder.GRID_CELL_HEIGHT - gameState.getPlayer().getHeight()) / 2.0,
+                    gameState.getPlayer().getY(),
+                    0.001,
+                    level.getDisplayId() + " player y"
+            );
+            assertFalse(new CollisionManager().hasWallCollision(gameState.getPlayer(), level.getRoom()), level.getDisplayId());
+        }
     }
 }

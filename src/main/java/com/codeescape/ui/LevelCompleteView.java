@@ -9,6 +9,8 @@ import javafx.geometry.Pos;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.text.TextAlignment;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 
 public class LevelCompleteView {
@@ -22,6 +24,7 @@ public class LevelCompleteView {
 
     public Parent createView() {
         LevelCompletionSummary summary = app.getLastCompletionSummary();
+        SoundManager.play(SoundEffect.MEDAL);
 
         Label title = new Label("Congrats!");
         title.getStyleClass().add("level-complete-title");
@@ -31,18 +34,31 @@ public class LevelCompleteView {
 
         Label concept = new Label("Completed " + completedLevel.getDisplayId() + ": " + completedLevel.getConcept());
         concept.getStyleClass().add("level-complete-concept");
+        concept.setWrapText(true);
+        concept.setAlignment(Pos.CENTER);
+        concept.setTextAlignment(TextAlignment.CENTER);
+        concept.setPrefWidth(860);
+        concept.setMaxWidth(860);
 
         Label explanation = new Label(completedLevel.getCompletionExplanation());
         explanation.setWrapText(true);
+        explanation.setAlignment(Pos.CENTER);
+        explanation.setTextAlignment(TextAlignment.CENTER);
         explanation.setMaxWidth(820);
         explanation.getStyleClass().add("level-complete-explanation");
 
-        Label medal = new Label("Medal earned: " + summary.medalRank().getDisplayName());
-        medal.getStyleClass().add("level-complete-reward");
+        Label medalLabel = new Label("Medal earned");
+        medalLabel.getStyleClass().add("level-complete-reward");
+        HBox medal = new HBox(12, medalLabel, MedalBadgeView.create(summary.medalRank()));
+        medal.setAlignment(Pos.CENTER);
+        medal.getStyleClass().add("level-complete-medal-row");
 
         Button nextButton = new Button("Next Level");
         nextButton.getStyleClass().add("pixel-button");
-        nextButton.setOnAction(event -> app.goToNextLevel());
+        nextButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            app.goToNextLevel();
+        });
 
         VBox root = new VBox(20, title, message, concept, medal);
         if (!completedLevel.getCompletionExplanation().isBlank()) {

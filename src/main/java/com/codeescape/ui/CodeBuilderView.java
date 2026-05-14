@@ -85,9 +85,18 @@ public class CodeBuilderView {
         instructionsLabel.getStyleClass().add("puzzle-copy");
         refreshGoalText();
 
-        removeLastButton.setOnAction(event -> removeLastToken());
-        clearButton.setOnAction(event -> clearAnswer());
-        submitButton.setOnAction(event -> submitAnswer());
+        removeLastButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            removeLastToken();
+        });
+        clearButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            clearAnswer();
+        });
+        submitButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            submitAnswer();
+        });
         configureSelectedTokenBoxDropTarget();
 
         answerPreviewLabel.setWrapText(true);
@@ -306,7 +315,10 @@ public class CodeBuilderView {
             int selectedIndex = i;
             Label label = new Label(selectedTokens.get(i));
             label.getStyleClass().add("selected-token");
-            label.setOnMouseClicked(event -> removeTokenAt(selectedIndex));
+            label.setOnMouseClicked(event -> {
+                SoundManager.play(SoundEffect.BUTTON);
+                removeTokenAt(selectedIndex);
+            });
             label.setOnDragDetected(event -> {
                 Dragboard dragboard = label.startDragAndDrop(TransferMode.MOVE);
                 ClipboardContent content = new ClipboardContent();
@@ -365,7 +377,10 @@ public class CodeBuilderView {
             String value = tokenValues.get(i);
             Button button = new Button(value);
             button.getStyleClass().add("token-button");
-            button.setOnAction(event -> addTokenToAnswer(tokenIndex, value));
+            button.setOnAction(event -> {
+                SoundManager.play(SoundEffect.BUTTON);
+                addTokenToAnswer(tokenIndex, value);
+            });
             button.setOnDragDetected(event -> {
                 if (button.isDisabled()) {
                     return;

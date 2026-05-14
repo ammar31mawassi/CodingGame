@@ -9,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ProgressPolicyTest {
-    private static final int FINAL_LEVEL = 19;
+    private static final int FINAL_LEVEL = 24;
 
     @Test
     void noSaveStartsWithOnlyLevelOneUnlocked() {
@@ -64,6 +64,22 @@ class ProgressPolicyTest {
         assertTrue(progress.gameFinished());
         assertEquals(FINAL_LEVEL, progress.currentLevelNumber());
         assertEquals(FINAL_LEVEL, progress.highestUnlockedLevel());
+    }
+
+    @Test
+    void finishedLegacyCampaignStillCountsAsValidWhenNewLevelsAreAdded() {
+        SavedProgress finishedLegacyProgress = new SavedProgress(
+                GameMode.NORMAL,
+                19,
+                19,
+                0,
+                true,
+                true,
+                PlayerProgressProfile.empty()
+        );
+
+        assertTrue(ProgressPolicy.isValid(finishedLegacyProgress, FINAL_LEVEL));
+        assertEquals(FINAL_LEVEL, ProgressPolicy.highestSelectableLevel(Optional.of(finishedLegacyProgress), FINAL_LEVEL));
     }
 
     @Test

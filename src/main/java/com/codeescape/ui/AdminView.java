@@ -35,10 +35,12 @@ public class AdminView {
         Button normalModeButton = createModeButton(GameMode.NORMAL);
         Button hardModeButton = createModeButton(GameMode.HARD);
         normalModeButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
             app.setSelectedGameMode(GameMode.NORMAL);
             refreshModeButtons(normalModeButton, hardModeButton);
         });
         hardModeButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
             app.setSelectedGameMode(GameMode.HARD);
             refreshModeButtons(normalModeButton, hardModeButton);
         });
@@ -58,9 +60,12 @@ public class AdminView {
             stageLevels.setAlignment(Pos.CENTER);
             for (Level level : stage.getValue()) {
                 Button levelButton = new Button(level.getDisplayId());
-                levelButton.getStyleClass().add("pixel-button");
+                levelButton.getStyleClass().addAll("pixel-button", "level-select-button");
                 levelButton.setTooltip(new Tooltip(level.getName() + " - " + level.getConcept()));
-                levelButton.setOnAction(event -> app.startAdminAtLevel(level.getLevelNumber()));
+                levelButton.setOnAction(event -> {
+                    SoundManager.play(SoundEffect.BUTTON);
+                    app.startAdminAtLevel(level.getLevelNumber());
+                });
                 stageLevels.getChildren().add(levelButton);
             }
 
@@ -69,7 +74,10 @@ public class AdminView {
 
         Button backButton = new Button("Main Menu");
         backButton.getStyleClass().add("pixel-button");
-        backButton.setOnAction(event -> app.showMainMenu());
+        backButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            app.showMainMenu();
+        });
 
         VBox content = new VBox(18, title, note, modeSelector, levelSelector, backButton);
         content.setAlignment(Pos.CENTER);

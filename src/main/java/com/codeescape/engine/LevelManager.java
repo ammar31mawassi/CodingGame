@@ -41,6 +41,13 @@ public class LevelManager {
     private static final String STAGE_3 = "String, Char, And Functions";
     private static final String STAGE_4 = "Loops";
     private static final String STAGE_5 = "Classes";
+    private static final double TOKEN_HEIGHT = 34;
+    private static final double TOKEN_LEFT = RoomLayoutBuilder.GRID_ORIGIN_X + RoomLayoutBuilder.GRID_CELL_WIDTH + 18;
+    private static final double TOKEN_TOP = RoomLayoutBuilder.GRID_ORIGIN_Y
+            + (RoomLayoutBuilder.GRID_CELL_HEIGHT - TOKEN_HEIGHT) / 2.0;
+    private static final double TOKEN_RIGHT_LIMIT = Constants.ROOM_WIDTH - 170;
+    private static final double TOKEN_HORIZONTAL_GAP = 16;
+    private static final double TOKEN_VERTICAL_GAP = 62;
 
     private final List<LevelDefinition> levelDefinitions = new ArrayList<>();
     private final LevelLayoutOverrideStore layoutOverrideStore;
@@ -79,6 +86,11 @@ public class LevelManager {
         add(this::createClassBlueprintLevel);
         add(this::createConstructorForgeLevel);
         add(this::createObjectLockLevel);
+        add(this::createVariablesCapstoneLevel);
+        add(this::createConditionsDebugCapstoneLevel);
+        add(this::createMethodsDebugCapstoneLevel);
+        add(this::createLoopsCapstoneLevel);
+        add(this::createObjectsDebugCapstoneLevel);
     }
 
     public Level getCurrentLevel() {
@@ -756,6 +768,155 @@ public class LevelManager {
         );
     }
 
+    private Level createVariablesCapstoneLevel() {
+        Puzzle puzzle = puzzle(
+                20,
+                "Variables Capstone",
+                "Build a score variable set to 42, then print score.",
+                List.of("variables", "assignment", "printing"),
+                new VariableThenPrintValidator("int", "score")
+        );
+
+        Room room = simpleRoom(20, tokens(
+                "int", "score", "=", "42", ";",
+                "System.out.println", "(", "score", ")", ";",
+                "\"42\"", "double"
+        ), puzzle);
+        return level(
+                20,
+                1,
+                4,
+                STAGE_1,
+                "Console Checkpoint",
+                "Variables capstone",
+                "This capstone combines declaration and output in one clean two-step solution.",
+                "Build the variable first, then print the variable name instead of the literal.",
+                room
+        );
+    }
+
+    private Level createConditionsDebugCapstoneLevel() {
+        Puzzle puzzle = puzzle(
+                21,
+                "Branch Debug Drill",
+                """
+                This code is almost correct, but one token is wrong. Fix it:
+                if (score >= pass) { System.out.println("pass"); } else { System.out.println("retry"); }
+                """,
+                List.of("if-else", "comparison operators", "debugging"),
+                new AcceptedAnswerValidator(List.of(
+                        "if (score > pass) { System.out.println(\"pass\"); } else { System.out.println(\"retry\"); }"
+                ))
+        );
+
+        Room room = simpleRoom(21, tokens(
+                "if", "(", "score", ">", "pass", ")", "{",
+                "System.out.println", "(", "\"pass\"", ")", ";", "}",
+                "else", "{", "System.out.println", "(", "\"retry\"", ")", ";", "}",
+                ">=", "<", "=="
+        ), puzzle);
+        return level(
+                21,
+                2,
+                6,
+                STAGE_2,
+                "Branch Debug Drill",
+                "Condition debugging capstone",
+                "Debugging means reading the existing logic closely and replacing only the token that breaks the rule.",
+                "The branch text is already correct. Focus on the comparison operator.",
+                room
+        );
+    }
+
+    private Level createMethodsDebugCapstoneLevel() {
+        Puzzle puzzle = puzzle(
+                22,
+                "Method Repair",
+                """
+                This method almost works, but two details are wrong. Fix it:
+                String greet() { return "Hi"; }
+                """,
+                List.of("methods", "return values", "debugging"),
+                new AcceptedAnswerValidator(List.of(
+                        "void greet() { System.out.println(\"Hi\"); }"
+                ))
+        );
+
+        Room room = simpleRoom(22, tokens(
+                "void", "String", "greet", "(", ")", "{",
+                "System.out.println", "(", "\"Hi\"", ")", ";",
+                "return", "\"Hi\"", "}"
+        ), puzzle);
+        return level(
+                22,
+                3,
+                5,
+                STAGE_3,
+                "Method Repair",
+                "Method debugging capstone",
+                "This capstone checks whether you can spot when a method should act with print instead of return a value.",
+                "Replace the wrong return shape with the same print pattern you used earlier.",
+                room
+        );
+    }
+
+    private Level createLoopsCapstoneLevel() {
+        Puzzle puzzle = puzzle(
+                23,
+                "Loops Capstone",
+                "Build a for loop that prints i while i counts from 0 to 3.",
+                List.of("for loops", "counter updates", "printing"),
+                new ForLoopValidator("i", "4", "i")
+        );
+
+        Room room = simpleRoom(23, tokens(
+                "for", "(", "int", "i", "=", "0", ";", "i", "<", "4", ";", "i", "++", ")",
+                "{", "System.out.println", "(", "i", ")", ";", "}",
+                "while", "3"
+        ), puzzle);
+        return level(
+                23,
+                4,
+                5,
+                STAGE_4,
+                "Loop Relay",
+                "Loops capstone",
+                "This capstone combines loop setup, stopping condition, update, and printed output in one pattern.",
+                "Keep the classic for-loop header together: setup, compare, then increment.",
+                room
+        );
+    }
+
+    private Level createObjectsDebugCapstoneLevel() {
+        Puzzle puzzle = puzzle(
+                24,
+                "Object Repair",
+                """
+                This object code almost works, but one call is wrong. Fix it:
+                Item key = new Item("key"); key.unlock();
+                """,
+                List.of("objects", "constructors", "method calls", "debugging"),
+                new ObjectCreateAndCallValidator()
+        );
+
+        Room room = simpleRoom(24, tokens(
+                "Item", "key", "=", "new", "Item", "(",
+                "\"key\"", ")", ";", "key", ".", "use", "(", ")", ";",
+                "unlock"
+        ), puzzle);
+        return level(
+                24,
+                5,
+                4,
+                STAGE_5,
+                "Object Repair",
+                "Objects debugging capstone",
+                "The fix is small, but it proves you can read object code and spot the wrong method call.",
+                "The object creation line is already right. Repair the method name after the dot.",
+                room
+        );
+    }
+
     private Puzzle puzzle(int levelNumber, String title, String instructions, List<String> concepts, CodeValidator validator) {
         Optional<LevelLayoutOverride> override = layoutOverrideStore.load(levelNumber);
         String effectiveTitle = override
@@ -919,14 +1080,20 @@ public class LevelManager {
     }
 
     private Token visibleToken(LevelLayoutOverride.TokenPlacement token) {
+        int column = token.column();
+        int row = token.row();
+        if (column == 0 && row == 0) {
+            column = 1;
+        }
+
         double width = tokenWidth(token.value());
         double x = RoomLayoutBuilder.GRID_ORIGIN_X
-                + token.column() * RoomLayoutBuilder.GRID_CELL_WIDTH
+                + column * RoomLayoutBuilder.GRID_CELL_WIDTH
                 + (RoomLayoutBuilder.GRID_CELL_WIDTH - width) / 2.0;
         double y = RoomLayoutBuilder.GRID_ORIGIN_Y
-                + token.row() * RoomLayoutBuilder.GRID_CELL_HEIGHT
-                + (RoomLayoutBuilder.GRID_CELL_HEIGHT - 28) / 2.0;
-        return new Token(token.value(), x, y, width, 28, token.type());
+                + row * RoomLayoutBuilder.GRID_CELL_HEIGHT
+                + (RoomLayoutBuilder.GRID_CELL_HEIGHT - TOKEN_HEIGHT) / 2.0;
+        return new Token(token.value(), x, y, width, TOKEN_HEIGHT, token.type());
     }
 
     private Chest goalChestForLevel(int levelNumber, Chest defaultChest) {
@@ -938,20 +1105,26 @@ public class LevelManager {
 
     private List<Token> tokens(String... values) {
         List<Token> tokens = new ArrayList<>();
-        for (int i = 0; i < values.length; i++) {
-            double x = 118 + (i % 6) * 132;
-            double y = 118 + (i / 6) * 78;
-            tokens.add(new Token(values[i], x, y, tokenWidth(values[i]), 28));
+        double x = TOKEN_LEFT;
+        double y = TOKEN_TOP;
+        for (String value : values) {
+            double width = tokenWidth(value);
+            if (x > TOKEN_LEFT && x + width > TOKEN_RIGHT_LIMIT) {
+                x = TOKEN_LEFT;
+                y += TOKEN_VERTICAL_GAP;
+            }
+            tokens.add(new Token(value, x, y, width, TOKEN_HEIGHT));
+            x += width + TOKEN_HORIZONTAL_GAP;
         }
         return tokens;
     }
 
     private double tokenWidth(String value) {
-        return Math.max(46, value.length() * 11 + 24);
+        return Math.max(48, value.length() * 11 + 28);
     }
 
     private Token specialToken(String value, double x, double y, TokenType type) {
-        return new Token(value, x, y, tokenWidth(value), 28, type);
+        return new Token(value, x, y, tokenWidth(value), TOKEN_HEIGHT, type);
     }
 
     private List<ChestReward> shuffledRewards(List<String> values) {
@@ -964,13 +1137,13 @@ public class LevelManager {
     }
 
     private Door createExitDoor() {
-        return RoomLayoutBuilder.rightExitDoor();
+        return createGridExitDoor();
     }
 
     private Door createGridExitDoor() {
         double gridRightEdge = RoomLayoutBuilder.GRID_ORIGIN_X
                 + RoomLayoutBuilder.GRID_COLUMNS * RoomLayoutBuilder.GRID_CELL_WIDTH;
-        return new Door(gridRightEdge - 26, Constants.ROOM_HEIGHT / 2.0 - 59, 52, 118);
+        return new Door(gridRightEdge - 52, Constants.ROOM_HEIGHT / 2.0 - 59, 52, 118);
     }
 
     private record LevelDefinition(Supplier<Level> factory) {

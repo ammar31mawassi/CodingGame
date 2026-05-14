@@ -1,6 +1,7 @@
 module com.codeescape {
     requires com.github.javaparser.core;
     requires javafx.controls;
+    requires javafx.media;
     requires java.prefs;
 
     exports com.codeescape;

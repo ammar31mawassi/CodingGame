@@ -22,7 +22,7 @@ public class GameState {
     private final Map<Integer, Integer> revealedHintCounts = new HashMap<>();
 
     public GameState() {
-        player = createPlayer(Constants.PLAYER_START_X, Constants.PLAYER_START_Y);
+        player = createPlayerAtGridCellZero();
         inventory = new Inventory();
     }
 
@@ -130,14 +130,14 @@ public class GameState {
     }
 
     private Player createPlayerForLevel(Level level) {
-        if (level != null && "2-2".equals(level.getDisplayId())) {
-            return createPlayer(
-                    RoomLayoutBuilder.GRID_ORIGIN_X + (RoomLayoutBuilder.GRID_CELL_WIDTH - Constants.PLAYER_WIDTH) / 2.0,
-                    RoomLayoutBuilder.GRID_ORIGIN_Y + (RoomLayoutBuilder.GRID_CELL_HEIGHT - Constants.PLAYER_HEIGHT) / 2.0
-            );
-        }
+        return createPlayerAtGridCellZero();
+    }
 
-        return createPlayer(Constants.PLAYER_START_X, Constants.PLAYER_START_Y);
+    private Player createPlayerAtGridCellZero() {
+        return createPlayer(
+                RoomLayoutBuilder.GRID_ORIGIN_X + (RoomLayoutBuilder.GRID_CELL_WIDTH - Constants.PLAYER_WIDTH) / 2.0,
+                RoomLayoutBuilder.GRID_ORIGIN_Y + (RoomLayoutBuilder.GRID_CELL_HEIGHT - Constants.PLAYER_HEIGHT) / 2.0
+        );
     }
 
     private Player createPlayer(double x, double y) {

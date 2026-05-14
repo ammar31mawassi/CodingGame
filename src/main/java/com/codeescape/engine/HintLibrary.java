@@ -33,17 +33,17 @@ public final class HintLibrary {
         return switch (level.getDisplayId()) {
             case "1-1" -> notebookPattern("variable-declaration");
             case "1-2" -> notebookPattern("print-statement");
-            case "1-3", "2-2" -> notebookPattern("variable-declaration");
+            case "1-3", "1-4", "2-2" -> notebookPattern("variable-declaration");
             case "2-1" -> notebookPattern("if-block");
-            case "2-3", "2-4", "2-5" -> notebookPattern("if-else-branch");
+            case "2-3", "2-4", "2-5", "2-6" -> notebookPattern("if-else-branch");
             case "3-1", "3-2" -> notebookPattern("string-char");
-            case "3-3" -> notebookPattern("void-method");
+            case "3-3", "3-5" -> notebookPattern("void-method");
             case "3-4" -> notebookPattern("return-method");
             case "4-1", "4-4" -> notebookPattern("while-loop");
-            case "4-2", "4-3" -> notebookPattern("for-loop");
+            case "4-2", "4-3", "4-5" -> notebookPattern("for-loop");
             case "5-1" -> notebookPattern("class-fields");
             case "5-2" -> notebookPattern("constructor-method");
-            case "5-3" -> notebookPattern("object-call");
+            case "5-3", "5-4" -> notebookPattern("object-call");
             default -> Optional.empty();
         };
     }

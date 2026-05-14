@@ -21,15 +21,24 @@ public class GameOverView {
         Label summary = new Label("You completed variables, printing, conditions, strings, loops, classes, and objects.");
         Button normalRestartButton = new Button("Restart Normal");
         normalRestartButton.getStyleClass().add("pixel-button");
-        normalRestartButton.setOnAction(event -> app.startNewGame(GameMode.NORMAL));
+        normalRestartButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            app.startNewGame(GameMode.NORMAL);
+        });
 
         Button hardRestartButton = new Button("Restart Hard");
         hardRestartButton.getStyleClass().add("pixel-button");
-        hardRestartButton.setOnAction(event -> app.startNewGame(GameMode.HARD));
+        hardRestartButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            app.startNewGame(GameMode.HARD);
+        });
 
         Button menuButton = new Button("Main Menu");
         menuButton.getStyleClass().add("pixel-button");
-        menuButton.setOnAction(event -> app.showMainMenu());
+        menuButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            app.showMainMenu();
+        });
 
         HBox restartOptions = new HBox(12, normalRestartButton, hardRestartButton, menuButton);
         restartOptions.setAlignment(Pos.CENTER);

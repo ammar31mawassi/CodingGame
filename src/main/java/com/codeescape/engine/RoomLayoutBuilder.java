@@ -126,8 +126,8 @@ public final class RoomLayoutBuilder {
         List<int[]> normalCells = List.of(
                 cell(2, 0), cell(4, 0), cell(6, 0), cell(8, 0), cell(11, 0),
                 cell(0, 1), cell(2, 1), cell(4, 1), cell(6, 1), cell(8, 1), cell(11, 1),
-                cell(0, 2), cell(3, 2), cell(4, 2), cell(6, 2), cell(8, 2), cell(11, 2),
-                cell(0, 3), cell(2, 3), cell(4, 3), cell(6, 3), cell(8, 3), cell(11, 3),
+                cell(0, 2), cell(3, 2), cell(4, 2), cell(6, 2), cell(8, 2),
+                cell(0, 3), cell(2, 3), cell(4, 3), cell(6, 3), cell(8, 3),
                 cell(0, 4), cell(2, 4), cell(4, 4), cell(6, 4), cell(8, 4), cell(11, 4),
                 cell(1, 5), cell(2, 5), cell(4, 5), cell(5, 5), cell(6, 5), cell(8, 5), cell(11, 5)
         );
