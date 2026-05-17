@@ -8,6 +8,7 @@ import com.codeescape.engine.HintLibrary;
 import com.codeescape.engine.MedalRank;
 import com.codeescape.engine.NotebookEntry;
 import com.codeescape.engine.RoomLayoutBuilder;
+import com.codeescape.engine.PracticePrompt;
 import com.codeescape.model.Chest;
 import com.codeescape.model.ChestReward;
 import com.codeescape.model.Door;
@@ -96,7 +97,8 @@ public class GameView {
         TUTORIAL,
         PAUSE,
         NOTEBOOK,
-        ACHIEVEMENTS
+        ACHIEVEMENTS,
+        PRACTICE
     }
 
     private final GameApp app;
@@ -172,9 +174,10 @@ public class GameView {
     }
 
     private double gameSurfaceScale() {
-        double availableWidth = Math.max(GAME_SURFACE_WIDTH, root.getWidth() - FULLSCREEN_MARGIN * 2);
-        double availableHeight = Math.max(GAME_SURFACE_HEIGHT, root.getHeight() - FULLSCREEN_MARGIN * 2);
-        return Math.min(availableWidth / GAME_SURFACE_WIDTH, availableHeight / GAME_SURFACE_HEIGHT);
+        double availableWidth = Math.max(1, root.getWidth() - FULLSCREEN_MARGIN * 2);
+        double availableHeight = Math.max(1, root.getHeight() - FULLSCREEN_MARGIN * 2);
+        double fitScale = Math.min(availableWidth / GAME_SURFACE_WIDTH, availableHeight / GAME_SURFACE_HEIGHT);
+        return Math.max(0.1, fitScale);
     }
 
     private void renderRoom() {
@@ -785,8 +788,13 @@ public class GameView {
                 closeModal();
             });
 
-            HBox closeRow = new HBox(closeButton);
-            closeRow.setAlignment(Pos.TOP_LEFT);
+            Label hint = new Label("ESC");
+            hint.getStyleClass().add("modal-close-hint");
+            Region spacer = new Region();
+            HBox.setHgrow(spacer, javafx.scene.layout.Priority.ALWAYS);
+            HBox closeRow = new HBox(8, hint, spacer, closeButton);
+            closeRow.getStyleClass().add("modal-close-row");
+            closeRow.setAlignment(Pos.CENTER_RIGHT);
             modal.getChildren().add(closeRow);
         }
         modal.getChildren().add(content);
@@ -831,6 +839,28 @@ public class GameView {
         innerFloor.getStyleClass().add("room-inner-floor");
 
         gamePane.getChildren().addAll(floor, innerFloor);
+        addFloorGrid();
+    }
+
+    private void addFloorGrid() {
+        double left = gridLeft();
+        double top = gridTop();
+        double right = gridRight();
+        double bottom = gridBottom();
+        for (int column = 1; column < RoomLayoutBuilder.GRID_COLUMNS; column++) {
+            Rectangle line = new Rectangle(2, bottom - top);
+            line.setLayoutX(left + column * RoomLayoutBuilder.GRID_CELL_WIDTH - 1);
+            line.setLayoutY(top);
+            line.getStyleClass().add("room-grid-line");
+            gamePane.getChildren().add(line);
+        }
+        for (int row = 1; row < RoomLayoutBuilder.GRID_ROWS; row++) {
+            Rectangle line = new Rectangle(right - left, 2);
+            line.setLayoutX(left);
+            line.setLayoutY(top + row * RoomLayoutBuilder.GRID_CELL_HEIGHT - 1);
+            line.getStyleClass().add("room-grid-line");
+            gamePane.getChildren().add(line);
+        }
     }
 
     private Rectangle createInnerFloor() {
@@ -872,12 +902,22 @@ public class GameView {
                 tokenTile.getStyleClass().add("room-helper-token");
             }
 
-            Label value = new Label(token.getValue());
+            Label value = new Label(tokenLabel(token));
             value.getStyleClass().add("room-token-text");
             tokenTile.getChildren().add(value);
 
             gamePane.getChildren().add(tokenTile);
         }
+    }
+
+    private String tokenLabel(Token token) {
+        if (token.getType() == TokenType.GOAL) {
+            return "GOAL";
+        }
+        if (token.getType() == TokenType.HELPER) {
+            return "HELP";
+        }
+        return token.getValue();
     }
 
     private void addWalls() {
@@ -930,9 +970,13 @@ public class GameView {
                 chestTile.getStyleClass().add("room-chest-open");
             }
 
-            Label mark = new Label(chest.isOpened() ? "" : chest.isLocked() ? "LOCK" : "?");
+            Rectangle lid = new Rectangle(Math.max(12, chest.getWidth() - 10), 8);
+            lid.getStyleClass().add("room-chest-lid");
+            StackPane.setAlignment(lid, Pos.TOP_CENTER);
+
+            Label mark = new Label(chest.isOpened() ? "OPEN" : chest.isLocked() ? "LOCK" : "?");
             mark.getStyleClass().add("room-chest-text");
-            chestTile.getChildren().add(mark);
+            chestTile.getChildren().addAll(lid, mark);
 
             gamePane.getChildren().add(chestTile);
         }
@@ -1062,10 +1106,20 @@ public class GameView {
         double y = player.getY();
         double width = player.getWidth();
 
+        Rectangle shadow = new Rectangle(width + 10, 5);
+        shadow.setLayoutX(x - 5);
+        shadow.setLayoutY(y + 38);
+        shadow.getStyleClass().add("player-shadow");
+
         Rectangle head = new Rectangle(16, 14);
         head.setLayoutX(x + 4);
         head.setLayoutY(y);
         head.getStyleClass().add("player-head");
+
+        Rectangle face = new Rectangle(8, 4);
+        face.setLayoutX(x + 8);
+        face.setLayoutY(y + 5);
+        face.getStyleClass().add("player-face");
 
         Rectangle body = new Rectangle(width, 18);
         body.setLayoutX(x);
@@ -1082,7 +1136,7 @@ public class GameView {
         rightLeg.setLayoutY(y + 32);
         rightLeg.getStyleClass().add("player-leg");
 
-        gamePane.getChildren().addAll(head, body, leftLeg, rightLeg);
+        gamePane.getChildren().addAll(shadow, head, face, body, leftLeg, rightLeg);
     }
 
     private void addHardModeDarkness() {
@@ -1102,11 +1156,24 @@ public class GameView {
         Shape overlay = Shape.subtract(darkness, light);
         overlay.setMouseTransparent(true);
         overlay.getStyleClass().add("hard-mode-darkness");
-        gamePane.getChildren().add(overlay);
+
+        Circle lightEdge = new Circle(
+                player.getX() + player.getWidth() / 2.0,
+                player.getY() + player.getHeight() / 2.0,
+                HARD_MODE_LIGHT_RADIUS
+        );
+        lightEdge.getStyleClass().add("hard-mode-light-edge");
+        lightEdge.setMouseTransparent(true);
+        gamePane.getChildren().addAll(overlay, lightEdge);
     }
 
     private void addDoor() {
         Door door = gameState.getCurrentLevel().getRoom().getDoor();
+
+        Rectangle frame = new Rectangle(door.getWidth() + 14, door.getHeight() + 18);
+        frame.setLayoutX(door.getX() - 7);
+        frame.setLayoutY(door.getY() - 9);
+        frame.getStyleClass().add("door-frame");
 
         Rectangle doorShape = new Rectangle(door.getWidth(), door.getHeight());
         doorShape.setLayoutX(door.getX());
@@ -1118,7 +1185,7 @@ public class GameView {
         knob.setLayoutY(doorShape.getLayoutY() + 44);
         knob.setFill(Color.web("#f3d45a"));
 
-        gamePane.getChildren().addAll(doorShape, knob);
+        gamePane.getChildren().addAll(frame, doorShape, knob);
     }
 
     private void addChallengeDoor() {
@@ -1133,7 +1200,11 @@ public class GameView {
         doorShape.setLayoutY(challengeDoor.getY());
         doorShape.getStyleClass().add(challengeDoor.isLocked() ? "challenge-door-locked" : "challenge-door-open");
 
-        gamePane.getChildren().add(doorShape);
+        Label mark = new Label(challengeDoor.isLocked() ? "?" : "OK");
+        mark.getStyleClass().add("challenge-door-text");
+        mark.setLayoutX(challengeDoor.getX() + 8);
+        mark.setLayoutY(challengeDoor.getY() + Math.max(4, challengeDoor.getHeight() / 2.0 - 14));
+        gamePane.getChildren().addAll(doorShape, mark);
     }
 
     private void addTerminal() {
@@ -1148,9 +1219,15 @@ public class GameView {
             event.consume();
         });
 
-        Label prompt = new Label("Terminal");
+        HBox content = new HBox(7);
+        content.setAlignment(Pos.CENTER);
+
+        Rectangle screen = new Rectangle(18, 18);
+        screen.getStyleClass().add("terminal-screen");
+        Label prompt = new Label("RUN");
         prompt.getStyleClass().add("terminal-text");
-        terminal.getChildren().add(prompt);
+        content.getChildren().addAll(screen, prompt);
+        terminal.getChildren().add(content);
 
         gamePane.getChildren().add(terminal);
     }
@@ -1328,6 +1405,23 @@ public class GameView {
             emptyLabel.getStyleClass().add("modal-copy");
             entryList.getChildren().add(emptyLabel);
         } else {
+            Label masteryTitle = new Label("Concept Mastery Map");
+            masteryTitle.getStyleClass().add("modal-section-title");
+            entryList.getChildren().add(masteryTitle);
+            for (com.codeescape.engine.ConceptProgressSnapshot snapshot : app.getConceptProgressSnapshots()) {
+                Label mastery = new Label(snapshot.entry().title()
+                        + " | Status: " + snapshot.focusLabel()
+                        + " | Medal: " + (snapshot.bestMedal() == null ? "None" : snapshot.bestMedal().getDisplayName())
+                        + " | Practice: " + snapshot.practiceCompletions()
+                        + " | Hints: " + snapshot.hintUsage()
+                        + " | Bugs: " + snapshot.bugCount()
+                        + (snapshot.recoveryStamp() ? " | Recovery stamp earned" : ""));
+                mastery.getStyleClass().add("modal-copy");
+                mastery.setWrapText(true);
+                mastery.setMaxWidth(680);
+                entryList.getChildren().add(mastery);
+            }
+
             for (NotebookEntry entry : entries) {
                 Label entryTitle = new Label(entry.title());
                 entryTitle.getStyleClass().add("modal-section-title");
@@ -1341,12 +1435,50 @@ public class GameView {
                 pattern.setWrapText(true);
                 pattern.setMaxWidth(680);
                 entryList.getChildren().addAll(entryTitle, entrySummary, pattern);
+                app.getPracticePromptForNotebookEntry(entry.id()).ifPresent(prompt -> {
+                    Button practiceButton = new Button("Practice " + entry.title());
+                    practiceButton.getStyleClass().add("pixel-button");
+                    practiceButton.setOnAction(event -> {
+                        SoundManager.play(SoundEffect.BUTTON);
+                        showPracticeModal(prompt, entry.title());
+                    });
+                    entryList.getChildren().add(practiceButton);
+                });
             }
         }
 
         VBox content = new VBox(14, title, entryList);
         content.setMaxWidth(700);
         showModal(content, 780, 560, ModalType.NOTEBOOK);
+    }
+
+    private void showPracticeModal(PracticePrompt prompt, String notebookTitle) {
+        if (prompt == null) {
+            return;
+        }
+
+        if (activeModal != null) {
+            closeModal();
+        }
+
+        VBox card = PracticeDrillView.create(app, prompt, notebookTitle, false);
+        VBox content = new VBox(14);
+
+        Label title = new Label("Notebook Practice");
+        title.getStyleClass().add("modal-title");
+        content.getChildren().add(title);
+        content.getChildren().add(card);
+
+        Button closeButton = new Button("Back To Notebook");
+        closeButton.getStyleClass().add("pixel-button");
+        closeButton.setOnAction(event -> {
+            SoundManager.play(SoundEffect.BUTTON);
+            closeModal();
+            showNotebookWindow();
+        });
+        content.getChildren().add(closeButton);
+        content.setMaxWidth(760);
+        showModal(content, 860, 620, ModalType.PRACTICE);
     }
 
     private void showAchievementsWindow() {
@@ -1474,20 +1606,15 @@ public class GameView {
         }
     }
 
-    private void restartAfterBugFailure() {
-        stopMovementLoop();
-        PauseTransition restartDelay = new PauseTransition(Duration.seconds(1.4));
-        restartDelay.setOnFinished(event -> app.restartAfterBugFailure());
-        restartDelay.play();
-    }
-
     private void recordMistake() {
+        app.recordBugForLevel(gameState.getCurrentLevel());
         gameState.addBug();
         SoundManager.play(SoundEffect.BUG);
         setPickupMessage("OH NO! A BUG!", "bug-message");
         renderRoom();
         if (gameState.hasTooManyBugs()) {
-            restartAfterBugFailure();
+            stopMovementLoop();
+            app.showBugFailure();
         }
     }
 
@@ -1535,6 +1662,7 @@ public class GameView {
         }
 
         gameState.revealNextHint().ifPresent(hint -> {
+            app.recordHintUsageForLevel(gameState.getCurrentLevel());
             SoundManager.play(SoundEffect.HINT);
             showAdviceToast("Helper Hint", hint);
         });

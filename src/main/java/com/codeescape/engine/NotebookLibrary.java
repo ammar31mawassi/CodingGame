@@ -34,6 +34,47 @@ public final class NotebookLibrary {
         return ENTRIES;
     }
 
+    public static Optional<NotebookEntry> recommendedForLevel(com.codeescape.model.Level level) {
+        if (level == null) {
+            return Optional.empty();
+        }
+
+        Optional<NotebookEntry> mapped = entryForLevel(level);
+        if (mapped.isPresent()) {
+            return mapped;
+        }
+
+        return ENTRIES.stream()
+                .filter(entry -> entry.unlockLevelNumber() <= level.getLevelNumber())
+                .max(Comparator.comparingInt(NotebookEntry::unlockLevelNumber));
+    }
+
+    public static Optional<NotebookEntry> entryForLevel(com.codeescape.model.Level level) {
+        if (level == null) {
+            return Optional.empty();
+        }
+
+        return switch (level.getDisplayId()) {
+            case "1-1", "1-3", "1-4", "2-2" -> find("variable-declaration");
+            case "1-2" -> find("print-statement");
+            case "REV-1", "BOSS-1" -> find("variable-declaration");
+            case "2-1" -> find("if-block");
+            case "2-3", "2-4", "2-5", "2-6" -> find("if-else-branch");
+            case "REV-2", "BOSS-2" -> find("if-else-branch");
+            case "3-1", "3-2" -> find("string-char");
+            case "3-3", "3-5" -> find("void-method");
+            case "3-4" -> find("return-method");
+            case "REV-3", "BOSS-3" -> find("return-method");
+            case "4-1", "4-4" -> find("while-loop");
+            case "4-2", "4-3", "4-5" -> find("for-loop");
+            case "REV-4", "BOSS-4" -> find("for-loop");
+            case "5-1" -> find("class-fields");
+            case "5-2" -> find("constructor-method");
+            case "5-3", "5-4", "BOSS-5" -> find("object-call");
+            default -> Optional.empty();
+        };
+    }
+
     public static Optional<NotebookEntry> find(String id) {
         return ENTRIES.stream()
                 .filter(entry -> entry.id().equals(id))

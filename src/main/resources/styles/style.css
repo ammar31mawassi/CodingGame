@@ -1,5 +1,5 @@
 .main-menu {
-    -fx-background-color: #101419;
+    -fx-background-color: linear-gradient(to bottom, #080b10 0%, #101419 58%, #080b10 100%);
     -fx-padding: 18 28 22 28;
 }
 
@@ -17,6 +17,46 @@
     -fx-background-color: transparent;
 }
 
+.screen-scroll {
+    -fx-background: #101419;
+    -fx-background-color: #101419;
+}
+
+.screen-scroll > .viewport {
+    -fx-background-color: #101419;
+}
+
+.screen-scroll .scroll-bar:vertical {
+    -fx-background-color: transparent;
+    -fx-pref-width: 16px;
+    -fx-padding: 0 0 0 4;
+}
+
+.screen-scroll .scroll-bar:vertical .track {
+    -fx-background-color: #171c24;
+    -fx-border-color: #3d4753;
+    -fx-border-width: 2;
+}
+
+.screen-scroll .scroll-bar:vertical .thumb {
+    -fx-background-color: #5e6478;
+    -fx-border-color: #8ee3ff;
+    -fx-border-width: 2;
+}
+
+.screen-scroll .scroll-bar:vertical .increment-button,
+.screen-scroll .scroll-bar:vertical .decrement-button {
+    -fx-background-color: #171c24;
+    -fx-border-color: #3d4753;
+    -fx-border-width: 1;
+    -fx-padding: 2;
+}
+
+.screen-scroll .scroll-bar:vertical .increment-arrow,
+.screen-scroll .scroll-bar:vertical .decrement-arrow {
+    -fx-background-color: #f1ce54;
+}
+
 .main-menu-scroll .scroll-bar:vertical {
     -fx-background-color: transparent;
     -fx-pref-width: 16px;
@@ -31,7 +71,7 @@
 
 .main-menu-scroll .scroll-bar:vertical .thumb {
     -fx-background-color: #5e6478;
-    -fx-border-color: #f1ce54;
+    -fx-border-color: #8ee3ff;
     -fx-border-width: 2;
 }
 
@@ -58,8 +98,9 @@
 
 .stage-section {
     -fx-padding: 8 18 10 18;
-    -fx-border-color: rgba(94, 100, 120, 0.34);
-    -fx-border-width: 2 0 0 0;
+    -fx-background-color: rgba(13, 18, 25, 0.42);
+    -fx-border-color: rgba(142, 227, 255, 0.24) transparent transparent transparent;
+    -fx-border-width: 3 0 0 0;
 }
 
 .level-select-button {
@@ -97,7 +138,7 @@
     -fx-font-size: 44px;
     -fx-font-weight: bold;
     -fx-text-fill: #f6d65b;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.55), 12, 0, 0, 3);
+    -fx-effect: dropshadow(one-pass-box, #7b5721, 0, 0, 4, 4);
 }
 
 .menu-subtitle {
@@ -120,8 +161,44 @@
     -fx-text-alignment: center;
 }
 
+.stage-reward-summary {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #8ff0a8;
+    -fx-text-alignment: center;
+}
+
+.focus-route-card {
+    -fx-background-color: #101722;
+    -fx-border-color: #8ee3ff #263544 #080b10 #8ee3ff;
+    -fx-border-width: 3 5 5 3;
+    -fx-padding: 12 15 13 15;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.62), 0, 0, 4, 4);
+}
+
+.focus-route-compact {
+    -fx-spacing: 7;
+}
+
+.daily-route-card {
+    -fx-border-color: #8ff0a8 #247f42 #122d1d #8ff0a8;
+}
+
+.focus-route-row {
+    -fx-padding: 4 0 4 0;
+}
+
+.route-action-button {
+    -fx-min-width: 132px;
+    -fx-pref-width: 132px;
+}
+
+.stage-route-buttons {
+    -fx-padding: 2 0 0 0;
+}
+
 .game-screen {
-    -fx-background-color: #101419;
+    -fx-background-color: linear-gradient(to bottom, #080b10 0%, #101419 62%, #080b10 100%);
     -fx-font-family: "Consolas", "Courier New", monospace;
 }
 
@@ -138,8 +215,9 @@
 
 .game-room {
     -fx-background-color: #3d4753;
-    -fx-border-color: #101419;
-    -fx-border-width: 8;
+    -fx-border-color: #6f7c88 #101419 #080b10 #6f7c88;
+    -fx-border-width: 8 12 12 8;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.72), 0, 0, 8, 8);
 }
 
 .room-floor {
@@ -150,10 +228,14 @@
     -fx-fill: #252e36;
 }
 
+.room-grid-line {
+    -fx-fill: rgba(111, 124, 136, 0.15);
+}
+
 .room-token {
     -fx-background-color: #f1ce54;
-    -fx-border-color: #c4932f;
-    -fx-border-width: 0 0 4 4;
+    -fx-border-color: #fff0a6 #c4932f #7b5721 #fff0a6;
+    -fx-border-width: 2 4 4 2;
     -fx-padding: 1 7 2 7;
 }
 
@@ -176,13 +258,17 @@
 
 .room-wall {
     -fx-fill: #53606c;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.28), 5, 0, 2, 2);
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.32), 0, 0, 2, 2);
 }
 
 .room-chest {
     -fx-background-color: #9b6538;
-    -fx-border-color: #5d3828;
-    -fx-border-width: 0 0 6 6;
+    -fx-border-color: #c98b52 #5d3828 #33231d #c98b52;
+    -fx-border-width: 3 6 6 3;
+}
+
+.room-chest-lid {
+    -fx-fill: rgba(255, 232, 160, 0.18);
 }
 
 .room-chest-open {
@@ -196,9 +282,9 @@
 }
 
 .room-chest-text {
-    -fx-font-size: 16px;
+    -fx-font-size: 13px;
     -fx-font-weight: bold;
-    -fx-text-fill: #f1ce54;
+    -fx-text-fill: #f6e0bd;
 }
 
 .programmable-object {
@@ -221,12 +307,13 @@
 
 .pickup-message {
     -fx-background-color: rgba(17, 19, 28, 0.88);
-    -fx-border-color: #f1ce54;
-    -fx-border-width: 4;
+    -fx-border-color: #fff0a6 #9a7326 #7b5721 #fff0a6;
+    -fx-border-width: 3 5 5 3;
     -fx-padding: 6 10 7 10;
     -fx-font-size: 18px;
     -fx-font-weight: bold;
     -fx-text-fill: #f1f1ec;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.7), 0, 0, 5, 5);
 }
 
 .success-message {
@@ -250,9 +337,9 @@
 }
 
 .life-slot {
-    -fx-background-color: rgba(17, 19, 28, 0.72);
-    -fx-border-color: #5e6478;
-    -fx-border-width: 3;
+    -fx-background-color: rgba(17, 19, 28, 0.64);
+    -fx-border-color: #3d4753;
+    -fx-border-width: 2;
 }
 
 .bug-life-slot {
@@ -267,6 +354,18 @@
 
 .player-body {
     -fx-fill: #2b74a8;
+}
+
+.player-face {
+    -fx-fill: #101419;
+}
+
+.player-shadow {
+    -fx-fill: rgba(0, 0, 0, 0.28);
+}
+
+.door-frame {
+    -fx-fill: #384652;
 }
 
 .door-locked {
@@ -285,11 +384,23 @@
     -fx-fill: #43d868;
 }
 
+.challenge-door-text {
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f1ce54;
+}
+
 .terminal-tile {
     -fx-background-color: #44db72;
-    -fx-border-color: #1d8e47;
-    -fx-border-width: 0 0 7 7;
+    -fx-border-color: #a9ffc5 #1d8e47 #0b4e27 #a9ffc5;
+    -fx-border-width: 3 5 6 3;
     -fx-cursor: hand;
+}
+
+.terminal-screen {
+    -fx-fill: #182d2a;
+    -fx-stroke: #a9ffc5;
+    -fx-stroke-width: 2;
 }
 
 .terminal-text {
@@ -346,7 +457,19 @@
     -fx-cursor: hand;
 }
 
-.pixel-button,
+.pixel-button {
+    -fx-background-color: #263544;
+    -fx-text-fill: #f1f1ec;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 0;
+    -fx-border-color: #8ee3ff #17212c #080b10 #8ee3ff;
+    -fx-border-width: 3 5 5 3;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.48), 0, 0, 3, 3);
+}
+
 .token-button {
     -fx-background-color: #f1ce54;
     -fx-text-fill: #282b36;
@@ -354,20 +477,40 @@
     -fx-font-size: 16px;
     -fx-font-weight: bold;
     -fx-background-radius: 0;
-    -fx-border-color: #c4932f;
-    -fx-border-width: 0 0 5 5;
+    -fx-border-color: #fff0a6 #c4932f #7b5721 #fff0a6;
+    -fx-border-width: 3 5 5 3;
     -fx-cursor: hand;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.48), 0, 0, 3, 3);
+}
+
+.primary-action-button {
+    -fx-background-color: #43d868;
+    -fx-text-fill: #102018;
+    -fx-border-color: #a9ffc5 #247f42 #102b19 #a9ffc5;
+}
+
+.secondary-action-button {
+    -fx-background-color: #314457;
+    -fx-text-fill: #f1f1ec;
+    -fx-border-color: #8ee3ff #263544 #080b10 #8ee3ff;
 }
 
 .pixel-button:disabled,
 .token-button:disabled {
-    -fx-opacity: 0.72;
-    -fx-background-color: #6b612f;
-    -fx-border-color: #4b431f;
-    -fx-text-fill: #171821;
+    -fx-opacity: 1;
+    -fx-background-color: #303641;
+    -fx-border-color: #4b5462;
+    -fx-text-fill: #8e94a7;
 }
 
-.pixel-button:hover,
+.pixel-button:hover {
+    -fx-background-color: #36536a;
+}
+
+.primary-action-button:hover {
+    -fx-background-color: #64e784;
+}
+
 .token-button:hover,
 .inventory-token-button:hover {
     -fx-background-color: #ffe279;
@@ -385,8 +528,8 @@
     -fx-highlight-text-fill: #ffffff;
     -fx-font-family: "Consolas", "Courier New", monospace;
     -fx-font-size: 15px;
-    -fx-border-color: #5e6478;
-    -fx-border-width: 3;
+    -fx-border-color: #8ee3ff #263544 #263544 #8ee3ff;
+    -fx-border-width: 3 5 5 3;
 }
 
 .inventory-toggle-shape {
@@ -462,7 +605,13 @@
 }
 
 .hard-mode-darkness {
-    -fx-fill: rgba(0, 0, 0, 1);
+    -fx-fill: rgba(0, 0, 0, 0.96);
+}
+
+.hard-mode-light-edge {
+    -fx-fill: transparent;
+    -fx-stroke: rgba(142, 227, 255, 0.24);
+    -fx-stroke-width: 4;
 }
 
 .puzzle-overlay-shell {
@@ -476,21 +625,31 @@
 }
 
 .map-modal {
-    -fx-background-color: rgba(16, 20, 25, 0.92);
-    -fx-border-color: #53606c;
-    -fx-border-width: 8;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.55), 18, 0, 0, 5);
+    -fx-background-color: rgba(14, 18, 23, 0.96);
+    -fx-border-color: #8ee3ff #263544 #080b10 #8ee3ff;
+    -fx-border-width: 4 7 7 4;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.78), 0, 0, 6, 6);
+}
+
+.modal-close-row {
+    -fx-padding: 0 0 2 0;
+}
+
+.modal-close-hint {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #8e94a7;
 }
 
 .close-button {
-    -fx-background-color: #f1ce54;
-    -fx-text-fill: #282b36;
+    -fx-background-color: #263544;
+    -fx-text-fill: #f1f1ec;
     -fx-font-family: "Consolas", "Courier New", monospace;
     -fx-font-size: 18px;
     -fx-font-weight: bold;
     -fx-background-radius: 0;
-    -fx-border-color: #c4932f;
-    -fx-border-width: 0 0 4 4;
+    -fx-border-color: #8ee3ff #17212c #080b10 #8ee3ff;
+    -fx-border-width: 2 4 4 2;
     -fx-min-width: 38px;
     -fx-min-height: 32px;
     -fx-cursor: hand;
@@ -499,8 +658,8 @@
 .goal-icon-button {
     -fx-background-color: rgba(17, 19, 28, 0.92);
     -fx-background-radius: 0;
-    -fx-border-color: #5e6478;
-    -fx-border-width: 6;
+    -fx-border-color: #8ee3ff #263544 #080b10 #8ee3ff;
+    -fx-border-width: 4 6 6 4;
     -fx-min-width: 72px;
     -fx-min-height: 72px;
     -fx-cursor: hand;
@@ -553,14 +712,16 @@
 }
 
 .level-complete-screen {
-    -fx-background-color: #101419;
+    -fx-background-color: linear-gradient(to bottom, #080b10 0%, #101419 62%, #080b10 100%);
     -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-padding: 28 34 30 34;
 }
 
 .level-complete-title {
     -fx-font-size: 56px;
     -fx-font-weight: bold;
     -fx-text-fill: #f1ce54;
+    -fx-effect: dropshadow(one-pass-box, #7b5721, 0, 0, 4, 4);
 }
 
 .level-complete-message {
@@ -591,6 +752,18 @@
 
 .level-complete-medal-row {
     -fx-padding: 4 0 2 0;
+}
+
+.stage-recap-card {
+    -fx-background-color: #101722;
+    -fx-border-color: #8ee3ff #263544 #080b10 #8ee3ff;
+    -fx-border-width: 4 6 6 4;
+    -fx-padding: 14 16 15 16;
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.72), 0, 0, 6, 6);
+}
+
+.pixel-art-sprite {
+    -fx-effect: dropshadow(one-pass-box, rgba(0, 0, 0, 0.75), 0, 0, 5, 5);
 }
 
 .medal-badge {

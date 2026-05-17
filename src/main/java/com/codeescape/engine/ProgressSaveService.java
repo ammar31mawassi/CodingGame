@@ -18,6 +18,11 @@ public class ProgressSaveService {
     static final String KEY_ACHIEVEMENTS = "achievements";
     static final String KEY_NOTEBOOK_ENTRIES = "notebookEntries";
     static final String KEY_LEVEL_MEDALS = "levelMedals";
+    static final String KEY_CONCEPT_HINT_USAGE = "conceptHintUsage";
+    static final String KEY_CONCEPT_BUG_COUNTS = "conceptBugCounts";
+    static final String KEY_PRACTICE_COMPLETIONS = "practiceCompletions";
+    static final String KEY_RECOVERY_STAMPS = "recoveryStamps";
+    static final String KEY_STAGE_REWARDS = "stageRewards";
 
     private final Preferences preferences;
 
@@ -79,7 +84,12 @@ public class ProgressSaveService {
             return new PlayerProgressProfile(
                     parseAchievements(preferences.get(KEY_ACHIEVEMENTS, "")),
                     parseNotebookEntries(preferences.get(KEY_NOTEBOOK_ENTRIES, "")),
-                    parseLevelMedals(preferences.get(KEY_LEVEL_MEDALS, ""))
+                    parseLevelMedals(preferences.get(KEY_LEVEL_MEDALS, "")),
+                    parseStringCounts(preferences.get(KEY_CONCEPT_HINT_USAGE, "")),
+                    parseStringCounts(preferences.get(KEY_CONCEPT_BUG_COUNTS, "")),
+                    parseStringCounts(preferences.get(KEY_PRACTICE_COMPLETIONS, "")),
+                    parseNotebookEntries(preferences.get(KEY_RECOVERY_STAMPS, "")),
+                    parseNotebookEntries(preferences.get(KEY_STAGE_REWARDS, ""))
             );
         } catch (IllegalArgumentException exception) {
             return PlayerProgressProfile.empty();
@@ -91,6 +101,11 @@ public class ProgressSaveService {
         preferences.put(KEY_ACHIEVEMENTS, serializeAchievements(effectiveProfile));
         preferences.put(KEY_NOTEBOOK_ENTRIES, serializeNotebookEntries(effectiveProfile));
         preferences.put(KEY_LEVEL_MEDALS, serializeLevelMedals(effectiveProfile));
+        preferences.put(KEY_CONCEPT_HINT_USAGE, serializeStringCounts(effectiveProfile.conceptHintUsage()));
+        preferences.put(KEY_CONCEPT_BUG_COUNTS, serializeStringCounts(effectiveProfile.conceptBugCounts()));
+        preferences.put(KEY_PRACTICE_COMPLETIONS, serializeStringCounts(effectiveProfile.practiceCompletions()));
+        preferences.put(KEY_RECOVERY_STAMPS, String.join(",", effectiveProfile.recoveryStamps()));
+        preferences.put(KEY_STAGE_REWARDS, String.join(",", effectiveProfile.unlockedStageRewards()));
         flush();
     }
 
@@ -179,5 +194,34 @@ public class ProgressSaveService {
             medals.put(Integer.parseInt(parts[0]), MedalRank.valueOf(parts[1]));
         }
         return medals;
+    }
+
+    private String serializeStringCounts(java.util.Map<String, Integer> counts) {
+        return counts.entrySet().stream()
+                .sorted(java.util.Map.Entry.comparingByKey())
+                .map(entry -> entry.getKey() + ":" + entry.getValue())
+                .reduce((left, right) -> left + "," + right)
+                .orElse("");
+    }
+
+    private java.util.Map<String, Integer> parseStringCounts(String encoded) {
+        if (encoded == null || encoded.isBlank()) {
+            return java.util.Map.of();
+        }
+
+        java.util.Map<String, Integer> counts = new java.util.TreeMap<>();
+        for (String token : encoded.split(",")) {
+            String trimmed = token.trim();
+            if (trimmed.isBlank()) {
+                continue;
+            }
+
+            String[] parts = trimmed.split(":");
+            if (parts.length != 2) {
+                throw new IllegalArgumentException("Invalid concept count value.");
+            }
+            counts.put(parts[0], Integer.parseInt(parts[1]));
+        }
+        return counts;
     }
 }

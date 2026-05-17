@@ -9,6 +9,7 @@ public class Level {
     private final String concept;
     private final String completionExplanation;
     private final String goalHelper;
+    private final String displayIdOverride;
     private final Room room;
     private boolean completed;
 
@@ -21,7 +22,7 @@ public class Level {
     }
 
     public Level(int levelNumber, String name, String concept, String completionExplanation, String goalHelper, Room room) {
-        this(levelNumber, 1, levelNumber, concept, name, concept, completionExplanation, goalHelper, room);
+        this(levelNumber, 1, levelNumber, concept, name, concept, completionExplanation, goalHelper, null, room);
     }
 
     public Level(
@@ -35,6 +36,21 @@ public class Level {
             String goalHelper,
             Room room
     ) {
+        this(levelNumber, stageNumber, stageLevelNumber, stageTitle, name, concept, completionExplanation, goalHelper, null, room);
+    }
+
+    public Level(
+            int levelNumber,
+            int stageNumber,
+            int stageLevelNumber,
+            String stageTitle,
+            String name,
+            String concept,
+            String completionExplanation,
+            String goalHelper,
+            String displayIdOverride,
+            Room room
+    ) {
         this.levelNumber = levelNumber;
         this.stageNumber = stageNumber;
         this.stageLevelNumber = stageLevelNumber;
@@ -43,6 +59,7 @@ public class Level {
         this.concept = concept;
         this.completionExplanation = completionExplanation;
         this.goalHelper = goalHelper;
+        this.displayIdOverride = displayIdOverride;
         this.room = room;
     }
 
@@ -63,6 +80,9 @@ public class Level {
     }
 
     public String getDisplayId() {
+        if (displayIdOverride != null && !displayIdOverride.isBlank()) {
+            return displayIdOverride;
+        }
         return stageNumber + "-" + stageLevelNumber;
     }
 

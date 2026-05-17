@@ -3,7 +3,8 @@ package com.codeescape.engine;
 public enum AchievementId {
     CLEAN_CODER("Clean Coder", "Finish a level without making any bugs."),
     HARD_MODE_FINISHER("Hard Mode Stage Clear", "Finish the last level in a stage on hard mode."),
-    HELPER_SCOUT("Helper Scout", "Find a hidden helper before completing a level.");
+    HELPER_SCOUT("Helper Scout", "Find a hidden helper before completing a level."),
+    BOSS_BREAKER("Boss Breaker", "Clear a stage boss room and prove you can combine concepts.");
 
     private final String title;
     private final String description;

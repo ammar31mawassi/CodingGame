@@ -29,9 +29,12 @@ import com.codeescape.validation.VariableThenIfValidator;
 import com.codeescape.validation.VariableThenPrintValidator;
 import com.codeescape.validation.WhileLoopValidator;
 import com.github.javaparser.ast.expr.BinaryExpr;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -48,8 +51,18 @@ public class LevelManager {
     private static final double TOKEN_RIGHT_LIMIT = Constants.ROOM_WIDTH - 170;
     private static final double TOKEN_HORIZONTAL_GAP = 16;
     private static final double TOKEN_VERTICAL_GAP = 62;
+    private static final int REVISION_STAGE_1_LEVEL = 101;
+    private static final int REVISION_STAGE_2_LEVEL = 102;
+    private static final int REVISION_STAGE_3_LEVEL = 103;
+    private static final int REVISION_STAGE_4_LEVEL = 104;
+    private static final int BOSS_STAGE_1_LEVEL = 201;
+    private static final int BOSS_STAGE_2_LEVEL = 202;
+    private static final int BOSS_STAGE_3_LEVEL = 203;
+    private static final int BOSS_STAGE_4_LEVEL = 204;
+    private static final int BOSS_STAGE_5_LEVEL = 205;
 
     private final List<LevelDefinition> levelDefinitions = new ArrayList<>();
+    private final Map<Integer, LevelDefinition> specialLevelDefinitions = new LinkedHashMap<>();
     private final LevelLayoutOverrideStore layoutOverrideStore;
     private int currentLevelIndex;
     private Level currentLevel;
@@ -64,33 +77,44 @@ public class LevelManager {
 
     public void loadLevels() {
         levelDefinitions.clear();
+        specialLevelDefinitions.clear();
         currentLevelIndex = 0;
         currentLevel = null;
 
-        add(this::createVariableLevel);
-        add(this::createPrintLevel);
-        add(this::createVariableThenPrintLevel);
-        add(this::createIfStatementLevel);
-        add(this::createVariableThenIfLevel);
-        add(this::createIfElsePrintLevel);
-        add(this::createGreaterEqualsBranchLevel);
-        add(this::createBooleanBranchLevel);
-        add(this::createStringDeclarationLevel);
-        add(this::createCharDeclarationLevel);
-        add(this::createPrintMethodLevel);
-        add(this::createReturnMethodLevel);
-        add(this::createWhileLoopLevel);
-        add(this::createForLoopIndexLevel);
-        add(this::createForLoopMessageLevel);
-        add(this::createWhileLoopLivesLevel);
-        add(this::createClassBlueprintLevel);
-        add(this::createConstructorForgeLevel);
-        add(this::createObjectLockLevel);
-        add(this::createVariablesCapstoneLevel);
-        add(this::createConditionsDebugCapstoneLevel);
-        add(this::createMethodsDebugCapstoneLevel);
-        add(this::createLoopsCapstoneLevel);
-        add(this::createObjectsDebugCapstoneLevel);
+        addCampaign(this::createVariableLevel);
+        addCampaign(this::createPrintLevel);
+        addCampaign(this::createVariableThenPrintLevel);
+        addCampaign(this::createIfStatementLevel);
+        addCampaign(this::createVariableThenIfLevel);
+        addCampaign(this::createIfElsePrintLevel);
+        addCampaign(this::createGreaterEqualsBranchLevel);
+        addCampaign(this::createBooleanBranchLevel);
+        addCampaign(this::createStringDeclarationLevel);
+        addCampaign(this::createCharDeclarationLevel);
+        addCampaign(this::createPrintMethodLevel);
+        addCampaign(this::createReturnMethodLevel);
+        addCampaign(this::createWhileLoopLevel);
+        addCampaign(this::createForLoopIndexLevel);
+        addCampaign(this::createForLoopMessageLevel);
+        addCampaign(this::createWhileLoopLivesLevel);
+        addCampaign(this::createClassBlueprintLevel);
+        addCampaign(this::createConstructorForgeLevel);
+        addCampaign(this::createObjectLockLevel);
+        addCampaign(this::createVariablesCapstoneLevel);
+        addCampaign(this::createConditionsDebugCapstoneLevel);
+        addCampaign(this::createMethodsDebugCapstoneLevel);
+        addCampaign(this::createLoopsCapstoneLevel);
+        addCampaign(this::createObjectsDebugCapstoneLevel);
+
+        addSpecial(REVISION_STAGE_1_LEVEL, this::createStageOneRevisionWing);
+        addSpecial(REVISION_STAGE_2_LEVEL, this::createStageTwoRevisionWing);
+        addSpecial(REVISION_STAGE_3_LEVEL, this::createStageThreeRevisionWing);
+        addSpecial(REVISION_STAGE_4_LEVEL, this::createStageFourRevisionWing);
+        addSpecial(BOSS_STAGE_1_LEVEL, this::createStageOneBossLevel);
+        addSpecial(BOSS_STAGE_2_LEVEL, this::createStageTwoBossLevel);
+        addSpecial(BOSS_STAGE_3_LEVEL, this::createStageThreeBossLevel);
+        addSpecial(BOSS_STAGE_4_LEVEL, this::createStageFourBossLevel);
+        addSpecial(BOSS_STAGE_5_LEVEL, this::createStageFiveBossLevel);
     }
 
     public Level getCurrentLevel() {
@@ -104,6 +128,54 @@ public class LevelManager {
         return levelDefinitions.stream()
                 .map(LevelDefinition::create)
                 .toList();
+    }
+
+    public List<Level> getRevisionWingLevels() {
+        return List.of(
+                getLevel(REVISION_STAGE_1_LEVEL),
+                getLevel(REVISION_STAGE_2_LEVEL),
+                getLevel(REVISION_STAGE_3_LEVEL),
+                getLevel(REVISION_STAGE_4_LEVEL)
+        );
+    }
+
+    public List<Level> getStageBossLevels() {
+        return List.of(
+                getLevel(BOSS_STAGE_1_LEVEL),
+                getLevel(BOSS_STAGE_2_LEVEL),
+                getLevel(BOSS_STAGE_3_LEVEL),
+                getLevel(BOSS_STAGE_4_LEVEL),
+                getLevel(BOSS_STAGE_5_LEVEL)
+        );
+    }
+
+    public Optional<Level> revisionWingForStage(int stageNumber) {
+        return switch (stageNumber) {
+            case 1 -> Optional.of(getLevel(REVISION_STAGE_1_LEVEL));
+            case 2 -> Optional.of(getLevel(REVISION_STAGE_2_LEVEL));
+            case 3 -> Optional.of(getLevel(REVISION_STAGE_3_LEVEL));
+            case 4 -> Optional.of(getLevel(REVISION_STAGE_4_LEVEL));
+            default -> Optional.empty();
+        };
+    }
+
+    public Optional<Level> bossLevelForStage(int stageNumber) {
+        return switch (stageNumber) {
+            case 1 -> Optional.of(getLevel(BOSS_STAGE_1_LEVEL));
+            case 2 -> Optional.of(getLevel(BOSS_STAGE_2_LEVEL));
+            case 3 -> Optional.of(getLevel(BOSS_STAGE_3_LEVEL));
+            case 4 -> Optional.of(getLevel(BOSS_STAGE_4_LEVEL));
+            case 5 -> Optional.of(getLevel(BOSS_STAGE_5_LEVEL));
+            default -> Optional.empty();
+        };
+    }
+
+    public Level dailyChallengeFor(LocalDate date) {
+        LocalDate effectiveDate = date == null ? LocalDate.now() : date;
+        List<Level> pool = new ArrayList<>(getLevels());
+        pool.addAll(getRevisionWingLevels());
+        int index = Math.floorMod(effectiveDate.getDayOfYear() * 37 + effectiveDate.getYear(), pool.size());
+        return pool.get(index);
     }
 
     public boolean hasNextLevel() {
@@ -132,18 +204,38 @@ public class LevelManager {
             }
         }
 
+        LevelDefinition specialDefinition = specialLevelDefinitions.get(levelNumber);
+        if (specialDefinition != null) {
+            currentLevel = specialDefinition.create();
+            return currentLevel;
+        }
+
         throw new IllegalArgumentException("Unknown level: " + levelNumber);
     }
 
-    private void add(Supplier<Level> factory) {
+    private void addCampaign(Supplier<Level> factory) {
         levelDefinitions.add(new LevelDefinition(factory));
     }
 
+    private void addSpecial(int levelNumber, Supplier<Level> factory) {
+        specialLevelDefinitions.put(levelNumber, new LevelDefinition(factory));
+    }
+
     private LevelDefinition levelDefinition(int levelNumber) {
-        return levelDefinitions.stream()
+        LevelDefinition campaignDefinition = levelDefinitions.stream()
                 .filter(definition -> definition.create().getLevelNumber() == levelNumber)
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Unknown level: " + levelNumber));
+                .orElse(null);
+        if (campaignDefinition != null) {
+            return campaignDefinition;
+        }
+
+        LevelDefinition specialDefinition = specialLevelDefinitions.get(levelNumber);
+        if (specialDefinition != null) {
+            return specialDefinition;
+        }
+
+        throw new IllegalArgumentException("Unknown level: " + levelNumber);
     }
 
     private Level createVariableLevel() {
@@ -917,6 +1009,244 @@ public class LevelManager {
         );
     }
 
+    private Level createStageOneRevisionWing() {
+        Puzzle puzzle = puzzle(
+                "Revision Wing: Stage 1",
+                "Rebuild the basics in one route: declare score as 7, then print score.",
+                List.of("variables", "printing", "revision"),
+                new VariableThenPrintValidator("int", "score")
+        );
+
+        Room room = simpleRoom(REVISION_STAGE_1_LEVEL, tokens(
+                "int", "score", "=", "7", ";",
+                "System.out.println", "(", "score", ")", ";",
+                "\"7\"", "String"
+        ), puzzle);
+        return specialLevel(
+                REVISION_STAGE_1_LEVEL,
+                1,
+                "REV-1",
+                "Stage 1 Revision Wing",
+                "Variables and printing refresh",
+                "One compact room that makes you declare a value and use it immediately in output before Stage 2 starts.",
+                "Build the variable first, then print the variable name.",
+                room
+        );
+    }
+
+    private Level createStageTwoRevisionWing() {
+        Puzzle puzzle = puzzle(
+                "Revision Wing: Stage 2",
+                "Declare int score = 8; then use if/else to print \"open\" when score > 5, otherwise print \"wait\".",
+                List.of("variables", "if-else", "printing", "revision"),
+                new AcceptedAnswerValidator(List.of(
+                        "int score = 8; if (score > 5) { System.out.println(\"open\"); } else { System.out.println(\"wait\"); }"
+                ))
+        );
+
+        Room room = simpleRoom(REVISION_STAGE_2_LEVEL, tokens(
+                "int", "score", "=", "8", ";",
+                "if", "(", "score", ">", "5", ")", "{",
+                "System.out.println", "(", "\"open\"", ")", ";", "}",
+                "else", "{", "System.out.println", "(", "\"wait\"", ")", ";", "}",
+                ">=", "=="
+        ), puzzle);
+        return specialLevel(
+                REVISION_STAGE_2_LEVEL,
+                2,
+                "REV-2",
+                "Stage 2 Revision Wing",
+                "Variable plus branch refresh",
+                "This bridge room rechecks declaration, comparison, and two-branch output before the text-and-method stage.",
+                "There are three steps: declare, branch, then print inside both outcomes.",
+                room
+        );
+    }
+
+    private Level createStageThreeRevisionWing() {
+        Puzzle puzzle = puzzle(
+                "Revision Wing: Stage 3",
+                "Build a method named tag that returns the String \"Ammar-A\".",
+                List.of("String variables", "char variables", "methods", "revision"),
+                new AcceptedAnswerValidator(List.of(
+                        "String tag() { return \"Ammar-A\"; }"
+                ))
+        );
+
+        Room room = simpleRoom(REVISION_STAGE_3_LEVEL, tokens(
+                "String", "tag", "(", ")", "{", "return", "\"Ammar-A\"", ";", "}",
+                "void", "\"Ammar\"", "'A'"
+        ), puzzle);
+        return specialLevel(
+                REVISION_STAGE_3_LEVEL,
+                3,
+                "REV-3",
+                "Stage 3 Revision Wing",
+                "String and method refresh",
+                "This bridge room condenses Stage 3 into one clean return-method pattern anchored on text values.",
+                "Use the return-method structure, not a print method.",
+                room
+        );
+    }
+
+    private Level createStageFourRevisionWing() {
+        Puzzle puzzle = puzzle(
+                "Revision Wing: Stage 4",
+                "Build a for loop that prints i while i counts from 1 to 4.",
+                List.of("for loops", "printing", "revision"),
+                new AcceptedAnswerValidator(List.of(
+                        "for (int i = 1; i < 5; i++) { System.out.println(i); }"
+                ))
+        );
+
+        Room room = simpleRoom(REVISION_STAGE_4_LEVEL, tokens(
+                "for", "(", "int", "i", "=", "1", ";", "i", "<", "5", ";", "i", "++", ")",
+                "{", "System.out.println", "(", "i", ")", ";", "}",
+                "while", "0", "4"
+        ), puzzle);
+        return specialLevel(
+                REVISION_STAGE_4_LEVEL,
+                4,
+                "REV-4",
+                "Stage 4 Revision Wing",
+                "Loop control refresh",
+                "This bridge room checks whether you can set a loop range intentionally instead of copying the earlier starter pattern.",
+                "The loop starts at 1 and stops before 5.",
+                room
+        );
+    }
+
+    private Level createStageOneBossLevel() {
+        Puzzle puzzle = puzzle(
+                "Stage 1 Boss Room",
+                "Declare int gems = 12; then print gems.",
+                List.of("variables", "printing", "synthesis"),
+                new VariableThenPrintValidator("int", "gems")
+        );
+
+        Room room = simpleRoom(BOSS_STAGE_1_LEVEL, tokens(
+                "int", "gems", "=", "12", ";",
+                "System.out.println", "(", "gems", ")", ";",
+                "\"12\"", "double"
+        ), puzzle);
+        return specialLevel(
+                BOSS_STAGE_1_LEVEL,
+                1,
+                "BOSS-1",
+                "Stage 1 Boss: Signal Forge",
+                "Variables plus printing synthesis",
+                "The Stage 1 boss compresses the full basic loop into one clean declaration-to-output sequence.",
+                "Build the value first, then route the variable into print.",
+                room
+        );
+    }
+
+    private Level createStageTwoBossLevel() {
+        Puzzle puzzle = puzzle(
+                "Stage 2 Boss Room",
+                "Declare int score = 9; then print \"pass\" when score >= 8, otherwise print \"retry\".",
+                List.of("variables", "if-else", "printing", "synthesis"),
+                new AcceptedAnswerValidator(List.of(
+                        "int score = 9; if (score >= 8) { System.out.println(\"pass\"); } else { System.out.println(\"retry\"); }"
+                ))
+        );
+
+        Room room = simpleRoom(BOSS_STAGE_2_LEVEL, tokens(
+                "int", "score", "=", "9", ";",
+                "if", "(", "score", ">=", "8", ")", "{",
+                "System.out.println", "(", "\"pass\"", ")", ";", "}",
+                "else", "{", "System.out.println", "(", "\"retry\"", ")", ";", "}",
+                ">", "=="
+        ), puzzle);
+        return specialLevel(
+                BOSS_STAGE_2_LEVEL,
+                2,
+                "BOSS-2",
+                "Stage 2 Boss: Branch Sentinel",
+                "Variable plus branch synthesis",
+                "This boss makes you set state and then route two explicit outcomes from the comparison.",
+                "It is the same three-part flow every time: declare, compare, print each branch.",
+                room
+        );
+    }
+
+    private Level createStageThreeBossLevel() {
+        Puzzle puzzle = puzzle(
+                "Stage 3 Boss Room",
+                "Build a method named badge that returns \"Ammar-A\".",
+                List.of("String variables", "methods", "return values", "synthesis"),
+                new AcceptedAnswerValidator(List.of(
+                        "String badge() { return \"Ammar-A\"; }"
+                ))
+        );
+
+        Room room = simpleRoom(BOSS_STAGE_3_LEVEL, tokens(
+                "String", "badge", "(", ")", "{", "return", "\"Ammar-A\"", ";", "}",
+                "void", "System.out.println", "\"Ammar\"", "'A'"
+        ), puzzle);
+        return specialLevel(
+                BOSS_STAGE_3_LEVEL,
+                3,
+                "BOSS-3",
+                "Stage 3 Boss: Signature Vault",
+                "String and method synthesis",
+                "This boss checks whether you can package a text value inside the right method shape instead of defaulting to print.",
+                "The method returns a String, so it needs a return statement inside braces.",
+                room
+        );
+    }
+
+    private Level createStageFourBossLevel() {
+        Puzzle puzzle = puzzle(
+                "Stage 4 Boss Room",
+                "Build a for loop that prints i while i counts from 0 to 4.",
+                List.of("for loops", "printing", "synthesis"),
+                new ForLoopValidator("i", "5", "i")
+        );
+
+        Room room = simpleRoom(BOSS_STAGE_4_LEVEL, tokens(
+                "for", "(", "int", "i", "=", "0", ";", "i", "<", "5", ";", "i", "++", ")",
+                "{", "System.out.println", "(", "i", ")", ";", "}",
+                "while", "4"
+        ), puzzle);
+        return specialLevel(
+                BOSS_STAGE_4_LEVEL,
+                4,
+                "BOSS-4",
+                "Stage 4 Boss: Loop Reactor",
+                "Loop setup and output synthesis",
+                "This boss forces the full loop header and output path to stay stable across a slightly extended range.",
+                "Use the standard for-loop header, but count up to 4 instead of 3.",
+                room
+        );
+    }
+
+    private Level createStageFiveBossLevel() {
+        Puzzle puzzle = puzzle(
+                "Stage 5 Boss Room",
+                "Build a Player class with fields, a constructor, and a heal method.",
+                List.of("classes", "constructors", "methods", "synthesis"),
+                new ClassConstructorMethodValidator()
+        );
+
+        Room room = simpleRoom(BOSS_STAGE_5_LEVEL, tokens(
+                "class", "Player", "{", "String", "name", ";",
+                "int", "health", ";", "Player", "(", "String", "name", ",", "int", "health", ")", "{",
+                "this.name", "=", "name", ";", "this.health", "=", "health", ";", "}",
+                "void", "heal", "(", ")", "{", "health", "=", "health", "+", "1", ";", "}", "}"
+        ), puzzle);
+        return specialLevel(
+                BOSS_STAGE_5_LEVEL,
+                5,
+                "BOSS-5",
+                "Stage 5 Boss: Constructor Core",
+                "Class, constructor, and method synthesis",
+                "The final boss room asks for the whole object blueprint loop in one pass: fields, setup, then behavior.",
+                "Write the class shell first, then the constructor, then heal().",
+                room
+        );
+    }
+
     private Puzzle puzzle(int levelNumber, String title, String instructions, List<String> concepts, CodeValidator validator) {
         Optional<LevelLayoutOverride> override = layoutOverrideStore.load(levelNumber);
         String effectiveTitle = override
@@ -963,6 +1293,30 @@ public class LevelManager {
                 concept,
                 completionExplanation,
                 overriddenHelper(levelNumber, goalHelper),
+                room
+        );
+    }
+
+    private Level specialLevel(
+            int levelNumber,
+            int stageNumber,
+            String displayId,
+            String name,
+            String concept,
+            String completionExplanation,
+            String goalHelper,
+            Room room
+    ) {
+        return new Level(
+                levelNumber,
+                stageNumber,
+                99,
+                "Special Routes",
+                name,
+                concept,
+                completionExplanation,
+                goalHelper,
+                displayId,
                 room
         );
     }

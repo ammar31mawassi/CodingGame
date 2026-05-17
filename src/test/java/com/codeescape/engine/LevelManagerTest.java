@@ -8,6 +8,7 @@ import com.codeescape.model.ProgrammableObject;
 import com.codeescape.model.Token;
 import com.codeescape.model.TokenType;
 import java.nio.file.Path;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.io.TempDir;
@@ -32,6 +33,24 @@ class LevelManagerTest {
                 .toList());
         assertEquals("1-1", levelManager.getLevels().get(0).getDisplayId());
         assertEquals("5-4", levelManager.getLevels().get(23).getDisplayId());
+    }
+
+    @Test
+    void exposesStandaloneRevisionBossAndDailyRoutesWithoutChangingCampaignCount() {
+        LevelManager levelManager = new LevelManager();
+
+        levelManager.loadLevels();
+
+        assertEquals(24, levelManager.getLevels().size());
+        assertEquals(List.of("REV-1", "REV-2", "REV-3", "REV-4"), levelManager.getRevisionWingLevels().stream()
+                .map(Level::getDisplayId)
+                .toList());
+        assertEquals(List.of("BOSS-1", "BOSS-2", "BOSS-3", "BOSS-4", "BOSS-5"), levelManager.getStageBossLevels().stream()
+                .map(Level::getDisplayId)
+                .toList());
+        Level daily = levelManager.dailyChallengeFor(LocalDate.of(2026, 5, 17));
+        assertEquals(12, daily.getLevelNumber());
+        assertEquals("3-4", daily.getDisplayId());
     }
 
     @Test

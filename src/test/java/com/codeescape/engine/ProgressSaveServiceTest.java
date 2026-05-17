@@ -34,7 +34,12 @@ class ProgressSaveServiceTest {
         PlayerProgressProfile profile = PlayerProgressProfile.empty()
                 .withAchievement(AchievementId.CLEAN_CODER)
                 .withNotebookEntry("variable-declaration")
-                .withLevelMedal(4, MedalRank.SILVER);
+                .withLevelMedal(4, MedalRank.SILVER)
+                .withHintUsage("variable-declaration")
+                .withBugCount("variable-declaration")
+                .withPracticeCompletion("variable-declaration")
+                .withRecoveryStamp("variable-declaration")
+                .withStageReward(StageMilestoneReward.STAGE_1_CLEAR);
         SavedProgress progress = new SavedProgress(GameMode.HARD, 4, 5, 2, true, false, profile);
 
         service.save(progress, FINAL_LEVEL);
@@ -93,7 +98,10 @@ class ProgressSaveServiceTest {
         PlayerProgressProfile profile = PlayerProgressProfile.empty()
                 .withAchievement(AchievementId.HELPER_SCOUT)
                 .withNotebookEntry("if-block")
-                .withLevelMedal(6, MedalRank.GOLD);
+                .withLevelMedal(6, MedalRank.GOLD)
+                .withHintUsage("if-block")
+                .withPracticeCompletion("if-block")
+                .withStageReward(StageMilestoneReward.STAGE_2_GOLD);
 
         service.saveProfile(profile);
 

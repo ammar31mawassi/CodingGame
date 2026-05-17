@@ -8,13 +8,15 @@ The project now has a playable MVP with:
 
 - JavaFX app navigation, main menu, level select, level completion, and game-finished screens.
 - Keyboard movement with collision checks for walls, doors, tokens, chests, and challenge doors.
-- Nineteen stage-based learning levels covering variables, printing, if-else conditions, strings, chars, methods, loops, classes, constructors, and objects.
-- Goal and Helper tokens that reveal puzzle instructions and hints.
+- Twenty-four campaign levels across five stages, covering variables, printing, if-else conditions, strings, chars, methods, loops, classes, constructors, and objects.
+- Optional standalone revision wings, medal-gated stage boss rooms, and a seeded daily challenge route.
+- Goal and Helper tokens that reveal puzzle instructions and progressive hints.
 - Inventory UI for collected code tokens and token descriptions.
 - Terminal puzzle solving through token buttons or typed Java code.
-- Bug/life tracking for wrong answers, with restart after three mistakes.
+- Bug/life tracking for wrong answers, with a Bug Break recovery screen after three mistakes.
 - Normal and Hard modes; Hard mode hides everything outside the player's light radius.
-- One saved progress slot using checkpoint saves between sessions, with Continue Game and locked future levels.
+- One saved progress slot using checkpoint saves between sessions, with Continue Game, locked future levels, medals, achievements, notebook unlocks, practice completions, recovery stamps, and stage rewards.
+- A notebook and concept mastery map with interactive practice drills tied to each Java pattern.
 - Escape-key pause menu with resume, main-menu return, and a delayed thank-you exit.
 - Grid-authored maze, chest, challenge-door, and programmable-object gameplay for later levels, with validation for reachability and locked-room separation.
 - Unit tests for validators, maze generation, progress saving, level loading, and room reward behavior.
@@ -71,4 +73,5 @@ If Maven reports that `JAVA_HOME` is missing, set it to a JDK 17 installation be
 
 ## Next Ideas
 
-- Add sound effects and animation polish.
+- Add optional medal contracts or side objectives inside levels.
+- Add a player-facing custom challenge hub for editor-built rooms.
