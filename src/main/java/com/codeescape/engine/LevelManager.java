@@ -149,6 +149,22 @@ public class LevelManager {
         );
     }
 
+    public List<Level> getCustomChallengeLevels() {
+        return layoutOverrideStore.loadAll().stream()
+                .map(LevelLayoutOverride::levelNumber)
+                .distinct()
+                .sorted()
+                .map(levelNumber -> {
+                    try {
+                        return getLevel(levelNumber);
+                    } catch (IllegalArgumentException exception) {
+                        return null;
+                    }
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
+    }
+
     public Optional<Level> revisionWingForStage(int stageNumber) {
         return switch (stageNumber) {
             case 1 -> Optional.of(getLevel(REVISION_STAGE_1_LEVEL));
@@ -1293,6 +1309,7 @@ public class LevelManager {
                 concept,
                 completionExplanation,
                 overriddenHelper(levelNumber, goalHelper),
+                contractForRoom(room),
                 room
         );
     }
@@ -1317,8 +1334,19 @@ public class LevelManager {
                 completionExplanation,
                 goalHelper,
                 displayId,
+                contractForRoom(room),
                 room
         );
+    }
+
+    private MedalContract contractForRoom(Room room) {
+        if (room != null && room.hasChallengeDoor()) {
+            return new MedalContract(MedalContractType.SOLVE_QUESTION_DOOR, "Door Hacker", "Solve the question door before you leave the room.");
+        }
+        if (room != null && room.hasHiddenHelper()) {
+            return new MedalContract(MedalContractType.NO_HELPER, "No Helper", "Clear the room without opening a hidden helper.");
+        }
+        return new MedalContract(MedalContractType.NO_HINTS, "Silent Run", "Clear the room without revealing any tracked hints.");
     }
 
     private Room simpleRoom(int levelNumber, List<Token> levelTokens, Puzzle puzzle) {

@@ -4,6 +4,8 @@ import java.util.List;
 
 public record LevelCompletionSummary(
         MedalRank medalRank,
+        MedalContract medalContract,
+        boolean medalContractCompleted,
         List<AchievementId> newAchievements,
         List<NotebookEntry> newNotebookEntries,
         List<NotebookEntry> newRecoveryStamps,

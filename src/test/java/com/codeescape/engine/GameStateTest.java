@@ -8,6 +8,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class GameStateTest {
     @Test
@@ -49,5 +50,25 @@ class GameStateTest {
             );
             assertFalse(new CollisionManager().hasWallCollision(gameState.getPlayer(), level.getRoom()), level.getDisplayId());
         }
+    }
+
+    @Test
+    void scoutHintIsOneFreeHintPerLevel() {
+        LevelManager levelManager = new LevelManager(LevelLayoutOverrideStore.disabled());
+        levelManager.loadLevels();
+        GameState gameState = new GameState();
+        gameState.resetForLevel(levelManager.getLevel(1));
+
+        assertTrue(gameState.canRevealScoutHintForCurrentLevel());
+        assertTrue(gameState.revealScoutHint().isPresent());
+        assertEquals(1, gameState.revealedHintCountForCurrentLevel());
+        assertEquals(0, gameState.countedHintCountForCurrentLevel());
+
+        assertFalse(gameState.canRevealScoutHintForCurrentLevel());
+        assertTrue(gameState.revealScoutHint().isEmpty());
+
+        assertTrue(gameState.revealNextHint().isPresent());
+        assertEquals(2, gameState.revealedHintCountForCurrentLevel());
+        assertEquals(1, gameState.countedHintCountForCurrentLevel());
     }
 }

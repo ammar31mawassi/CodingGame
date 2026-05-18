@@ -100,6 +100,10 @@ public class MainMenuView {
         int highestSelectableLevel = app.getHighestSelectableLevel();
         PlayerProgressProfile profile = app.getPlayerProfile();
         levelSelector.getChildren().add(createDailyChallengePanel());
+        Node customChallengePanel = createCustomChallengeHub();
+        if (customChallengePanel != null) {
+            levelSelector.getChildren().add(customChallengePanel);
+        }
         Node focusRoutePanel = createFocusRoutePanel(app.getFocusRouteRecommendations());
         if (focusRoutePanel != null) {
             levelSelector.getChildren().add(focusRoutePanel);
@@ -302,6 +306,16 @@ public class MainMenuView {
         summary.setMaxWidth(620);
         summary.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
 
+        VBox card = new VBox(10, title, summary);
+        app.getMedalContract(daily).ifPresent(contract -> {
+            Label contractLabel = new Label("Today's contract: " + contract.title() + " - " + contract.description());
+            contractLabel.getStyleClass().add("stage-summary");
+            contractLabel.setWrapText(true);
+            contractLabel.setMaxWidth(620);
+            contractLabel.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+            card.getChildren().add(contractLabel);
+        });
+
         Button play = new Button("Play Daily");
         play.getStyleClass().addAll("pixel-button", "primary-action-button");
         play.setOnAction(event -> {
@@ -309,10 +323,50 @@ public class MainMenuView {
             app.startDailyChallenge();
         });
 
-        VBox card = new VBox(10, title, summary, play);
+        card.getChildren().add(play);
         card.setAlignment(Pos.CENTER);
         card.getStyleClass().addAll("focus-route-card", "daily-route-card");
         card.setMaxWidth(680);
+        return card;
+    }
+
+    private Node createCustomChallengeHub() {
+        List<Level> customLevels = app.getCustomChallengeLevels();
+        if (customLevels.isEmpty()) {
+            return null;
+        }
+
+        Label title = new Label("Custom Challenge Hub");
+        title.getStyleClass().add("menu-subtitle");
+
+        Label summary = new Label("Editor override rooms open here as standalone runs, so players can test custom layouts without touching campaign progress.");
+        summary.getStyleClass().add("modal-copy");
+        summary.setWrapText(true);
+        summary.setMaxWidth(620);
+        summary.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+
+        VBox card = new VBox(10, title, summary);
+        card.setAlignment(Pos.CENTER);
+        card.getStyleClass().addAll("focus-route-card", "custom-hub-card");
+        card.setMaxWidth(680);
+        for (Level level : customLevels) {
+            Label copy = new Label("Custom " + level.getDisplayId() + ": " + level.getName() + " | " + level.getRoom().getPuzzle().getTitle());
+            copy.getStyleClass().add("stage-summary");
+            copy.setWrapText(true);
+            copy.setMaxWidth(470);
+
+            Button play = new Button("Play Custom");
+            play.getStyleClass().addAll("pixel-button", "primary-action-button", "route-action-button");
+            play.setOnAction(event -> {
+                SoundManager.play(SoundEffect.BUTTON);
+                app.startCustomChallenge(level.getLevelNumber());
+            });
+
+            HBox row = new HBox(10, copy, play);
+            row.setAlignment(Pos.CENTER);
+            row.getStyleClass().add("focus-route-row");
+            card.getChildren().add(row);
+        }
         return card;
     }
 

@@ -164,6 +164,44 @@ class LevelManagerTest {
     }
 
     @Test
+    void campaignAndCustomChallengeLevelsExposeMedalContracts(@TempDir Path tempDir) {
+        LevelLayoutOverrideStore store = new LevelLayoutOverrideStore(tempDir);
+        store.save(new LevelLayoutOverride(
+                1,
+                RoomLayoutBuilder.GRID_COLUMNS,
+                RoomLayoutBuilder.GRID_ROWS,
+                new int[RoomLayoutBuilder.GRID_ROWS][RoomLayoutBuilder.GRID_COLUMNS],
+                List.of(),
+                List.of()
+        ));
+
+        LevelManager levelManager = new LevelManager(store);
+        levelManager.loadLevels();
+
+        Level campaignLevel = levelManager.getLevel(1);
+        Level customLevel = levelManager.getCustomChallengeLevels().get(0);
+
+        assertNotNull(campaignLevel.getMedalContract());
+        assertNotNull(customLevel.getMedalContract());
+        assertEquals(campaignLevel.getMedalContract().title(), customLevel.getMedalContract().title());
+    }
+
+    @Test
+    void medalContractsMatchAvailableRoomMechanics() {
+        LevelManager levelManager = new LevelManager(LevelLayoutOverrideStore.disabled());
+        levelManager.loadLevels();
+
+        List<Level> allLevels = new ArrayList<>();
+        allLevels.addAll(levelManager.getLevels());
+        allLevels.addAll(levelManager.getRevisionWingLevels());
+        allLevels.addAll(levelManager.getStageBossLevels());
+
+        for (Level level : allLevels) {
+            assertContractMatchesRoom(level);
+        }
+    }
+
+    @Test
     void savedQuestionDoorOverrideChangesVariableThenIfLevel(@TempDir Path tempDir) {
         LevelLayoutOverrideStore store = new LevelLayoutOverrideStore(tempDir);
         store.save(new LevelLayoutOverride(
@@ -218,6 +256,7 @@ class LevelManagerTest {
         );
         assertEquals("boolean", editedLevel.getRoom().getChallengeQuestion().getCorrectAnswer());
         assertEquals("true", editedLevel.getRoom().getChallengeQuestion().getReward().getValue());
+        assertEquals(MedalContractType.SOLVE_QUESTION_DOOR, editedLevel.getMedalContract().type());
     }
 
     @Test
@@ -307,6 +346,19 @@ class LevelManagerTest {
 
     private Rect rect(Level level, String label, ProgrammableObject object) {
         return new Rect(level.getDisplayId() + " " + label, object.getX(), object.getY(), object.getWidth(), object.getHeight());
+    }
+
+    private void assertContractMatchesRoom(Level level) {
+        MedalContractType type = level.getMedalContract().type();
+        if (level.getRoom().hasChallengeDoor()) {
+            assertEquals(MedalContractType.SOLVE_QUESTION_DOOR, type, level.getDisplayId());
+            return;
+        }
+        if (level.getRoom().hasHiddenHelper()) {
+            assertEquals(MedalContractType.NO_HELPER, type, level.getDisplayId());
+            return;
+        }
+        assertEquals(MedalContractType.NO_HINTS, type, level.getDisplayId());
     }
 
     private record Rect(String name, double x, double y, double width, double height) {

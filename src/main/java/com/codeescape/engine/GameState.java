@@ -7,8 +7,10 @@ import com.codeescape.model.Player;
 import com.codeescape.util.Constants;
 import com.codeescape.validation.VariableDeclarationValidator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 public class GameState {
     private Player player;
@@ -20,6 +22,8 @@ public class GameState {
     private boolean gameFinished;
     private boolean tutorialSeen;
     private final Map<Integer, Integer> revealedHintCounts = new HashMap<>();
+    private final Map<Integer, Integer> countedHintCounts = new HashMap<>();
+    private final Set<Integer> scoutHintUsedLevels = new HashSet<>();
 
     public GameState() {
         player = createPlayerAtGridCellZero();
@@ -107,6 +111,20 @@ public class GameState {
     }
 
     public Optional<String> revealNextHint() {
+        return revealHint(true);
+    }
+
+    public Optional<String> revealScoutHint() {
+        if (!canRevealScoutHintForCurrentLevel()) {
+            return Optional.empty();
+        }
+
+        Optional<String> hint = revealHint(false);
+        hint.ifPresent(value -> scoutHintUsedLevels.add(currentLevel.getLevelNumber()));
+        return hint;
+    }
+
+    private Optional<String> revealHint(boolean countsTowardContract) {
         if (currentLevel == null) {
             return Optional.empty();
         }
@@ -119,6 +137,9 @@ public class GameState {
         }
 
         revealedHintCounts.put(levelNumber, nextIndex + 1);
+        if (countsTowardContract) {
+            countedHintCounts.put(levelNumber, countedHintCounts.getOrDefault(levelNumber, 0) + 1);
+        }
         return Optional.of(hints.get(nextIndex));
     }
 
@@ -127,6 +148,26 @@ public class GameState {
             return 0;
         }
         return revealedHintCounts.getOrDefault(currentLevel.getLevelNumber(), 0);
+    }
+
+    public int countedHintCountForCurrentLevel() {
+        if (currentLevel == null) {
+            return 0;
+        }
+        return countedHintCounts.getOrDefault(currentLevel.getLevelNumber(), 0);
+    }
+
+    public boolean canRevealScoutHintForCurrentLevel() {
+        if (currentLevel == null) {
+            return false;
+        }
+
+        int levelNumber = currentLevel.getLevelNumber();
+        if (scoutHintUsedLevels.contains(levelNumber)) {
+            return false;
+        }
+
+        return revealedHintCounts.getOrDefault(levelNumber, 0) < HintLibrary.hintsFor(currentLevel).size();
     }
 
     private Player createPlayerForLevel(Level level) {

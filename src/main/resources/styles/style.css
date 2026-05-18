@@ -26,6 +26,12 @@
     -fx-background-color: #101419;
 }
 
+.level-complete-scroll,
+.level-complete-scroll > .viewport {
+    -fx-background: linear-gradient(to bottom, #080b10 0%, #101419 62%, #080b10 100%);
+    -fx-background-color: linear-gradient(to bottom, #080b10 0%, #101419 62%, #080b10 100%);
+}
+
 .screen-scroll .scroll-bar:vertical {
     -fx-background-color: transparent;
     -fx-pref-width: 16px;
@@ -184,6 +190,10 @@
     -fx-border-color: #8ff0a8 #247f42 #122d1d #8ff0a8;
 }
 
+.custom-hub-card {
+    -fx-border-color: #f1ce54 #7b5721 #12202d #f1ce54;
+}
+
 .focus-route-row {
     -fx-padding: 4 0 4 0;
 }
@@ -226,10 +236,6 @@
 
 .room-inner-floor {
     -fx-fill: #252e36;
-}
-
-.room-grid-line {
-    -fx-fill: rgba(111, 124, 136, 0.15);
 }
 
 .room-token {
@@ -660,8 +666,13 @@
     -fx-background-radius: 0;
     -fx-border-color: #8ee3ff #263544 #080b10 #8ee3ff;
     -fx-border-width: 4 6 6 4;
-    -fx-min-width: 72px;
-    -fx-min-height: 72px;
+    -fx-min-width: 138px;
+    -fx-min-height: 54px;
+    -fx-padding: 0 12 0 10;
+    -fx-font-family: "Consolas", "Courier New", monospace;
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #f1ce54;
     -fx-cursor: hand;
 }
 

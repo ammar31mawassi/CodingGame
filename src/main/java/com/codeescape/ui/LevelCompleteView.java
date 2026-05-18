@@ -82,6 +82,13 @@ public class LevelCompleteView {
         });
 
         VBox root = new VBox(stageFinal ? 14 : 20, title, message, concept, medal);
+        if (summary.medalContract() != null) {
+            Label contract = new Label("Contract " + summary.medalContract().title() + ": "
+                    + (summary.medalContractCompleted() ? "completed" : "missed"));
+            contract.getStyleClass().add(summary.medalContractCompleted() ? "achievement-unlocked-copy" : "modal-copy");
+            contract.setWrapText(true);
+            root.getChildren().add(contract);
+        }
         if (!stageFinal && !completedLevel.getCompletionExplanation().isBlank()) {
             root.getChildren().add(explanation);
         }
@@ -119,8 +126,9 @@ public class LevelCompleteView {
         root.getStyleClass().add("level-complete-screen");
         ScrollPane scrollPane = new ScrollPane(root);
         scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true);
         scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.getStyleClass().add("screen-scroll");
+        scrollPane.getStyleClass().addAll("screen-scroll", "level-complete-scroll");
         return scrollPane;
     }
 

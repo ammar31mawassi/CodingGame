@@ -10,6 +10,7 @@ public class Level {
     private final String completionExplanation;
     private final String goalHelper;
     private final String displayIdOverride;
+    private final com.codeescape.engine.MedalContract medalContract;
     private final Room room;
     private boolean completed;
 
@@ -22,7 +23,7 @@ public class Level {
     }
 
     public Level(int levelNumber, String name, String concept, String completionExplanation, String goalHelper, Room room) {
-        this(levelNumber, 1, levelNumber, concept, name, concept, completionExplanation, goalHelper, null, room);
+        this(levelNumber, 1, levelNumber, concept, name, concept, completionExplanation, goalHelper, null, null, room);
     }
 
     public Level(
@@ -34,9 +35,10 @@ public class Level {
             String concept,
             String completionExplanation,
             String goalHelper,
+            com.codeescape.engine.MedalContract medalContract,
             Room room
     ) {
-        this(levelNumber, stageNumber, stageLevelNumber, stageTitle, name, concept, completionExplanation, goalHelper, null, room);
+        this(levelNumber, stageNumber, stageLevelNumber, stageTitle, name, concept, completionExplanation, goalHelper, null, medalContract, room);
     }
 
     public Level(
@@ -49,6 +51,7 @@ public class Level {
             String completionExplanation,
             String goalHelper,
             String displayIdOverride,
+            com.codeescape.engine.MedalContract medalContract,
             Room room
     ) {
         this.levelNumber = levelNumber;
@@ -60,6 +63,7 @@ public class Level {
         this.completionExplanation = completionExplanation;
         this.goalHelper = goalHelper;
         this.displayIdOverride = displayIdOverride;
+        this.medalContract = medalContract;
         this.room = room;
     }
 
@@ -100,6 +104,10 @@ public class Level {
 
     public String getGoalHelper() {
         return goalHelper;
+    }
+
+    public com.codeescape.engine.MedalContract getMedalContract() {
+        return medalContract;
     }
 
     public Room getRoom() {

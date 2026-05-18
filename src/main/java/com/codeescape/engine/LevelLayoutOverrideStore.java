@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Properties;
@@ -79,6 +80,25 @@ public class LevelLayoutOverrideStore {
         return overrideDirectory.resolve(FILE_PREFIX + levelNumber + FILE_SUFFIX);
     }
 
+    public List<LevelLayoutOverride> loadAll() {
+        if (!enabled || !Files.isDirectory(overrideDirectory)) {
+            return List.of();
+        }
+
+        try (java.util.stream.Stream<Path> files = Files.list(overrideDirectory)) {
+            return files
+                    .filter(path -> path.getFileName().toString().startsWith(FILE_PREFIX))
+                    .filter(path -> path.getFileName().toString().endsWith(FILE_SUFFIX))
+                    .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+                    .map(this::loadFromPath)
+                    .flatMap(Optional::stream)
+                    .toList();
+        } catch (IOException exception) {
+            System.err.println("Could not scan override directory " + overrideDirectory + ": " + exception.getMessage());
+            return List.of();
+        }
+    }
+
     private Properties toProperties(LevelLayoutOverride override) {
         Properties properties = new Properties();
         properties.setProperty("version", String.valueOf(FORMAT_VERSION));
@@ -130,6 +150,24 @@ public class LevelLayoutOverrideStore {
             properties.setProperty("token." + i + ".chestOrder", String.valueOf(token.chestOrder()));
         }
         return properties;
+    }
+
+    private Optional<LevelLayoutOverride> loadFromPath(Path file) {
+        Properties properties = new Properties();
+        try (InputStream input = Files.newInputStream(file)) {
+            properties.load(input);
+            int levelNumber = intProperty(properties, "levelNumber", parseLevelNumber(file));
+            return Optional.of(fromProperties(levelNumber, properties));
+        } catch (IOException | RuntimeException exception) {
+            System.err.println("Could not load level layout override " + file + ": " + exception.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    private int parseLevelNumber(Path file) {
+        String name = file.getFileName().toString();
+        String number = name.substring(FILE_PREFIX.length(), name.length() - FILE_SUFFIX.length());
+        return Integer.parseInt(number);
     }
 
     private LevelLayoutOverride fromProperties(int requestedLevelNumber, Properties properties) {

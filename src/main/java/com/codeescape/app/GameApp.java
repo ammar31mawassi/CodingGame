@@ -6,6 +6,8 @@ import com.codeescape.engine.LevelCompletionSummary;
 import com.codeescape.engine.ConceptProgressSnapshot;
 import com.codeescape.engine.FocusRouteKind;
 import com.codeescape.engine.FocusRouteRecommendation;
+import com.codeescape.engine.MedalContract;
+import com.codeescape.engine.MedalContractProgress;
 import com.codeescape.engine.MedalRank;
 import com.codeescape.engine.NotebookEntry;
 import com.codeescape.engine.NotebookLibrary;
@@ -58,7 +60,7 @@ public class GameApp extends Application {
     private GameMode selectedGameMode = GameMode.NORMAL;
     private ProgressRun progressRun = ProgressRun.unsaved();
     private PlayerProgressProfile playerProfile = PlayerProgressProfile.empty();
-    private LevelCompletionSummary lastCompletionSummary = new LevelCompletionSummary(MedalRank.BRONZE, List.of(), List.of(), List.of(), List.of());
+    private LevelCompletionSummary lastCompletionSummary = new LevelCompletionSummary(MedalRank.BRONZE, null, false, List.of(), List.of(), List.of(), List.of());
     private Integer recoveryCandidateLevelNumber;
     private String recoveryCandidateEntryId;
     private boolean recoveryPracticeCompleted;
@@ -225,6 +227,10 @@ public class GameApp extends Application {
         startStandaloneLevel(getDailyChallengeLevel().getLevelNumber(), selectedGameMode);
     }
 
+    public void startCustomChallenge(int levelNumber) {
+        startStandaloneLevel(levelNumber, selectedGameMode);
+    }
+
     public boolean isStandaloneSession() {
         return standaloneSession;
     }
@@ -350,6 +356,83 @@ public class GameApp extends Application {
         return StageMilestoneReward.forStage(stageNumber).stream()
                 .filter(playerProfile::hasStageReward)
                 .toList();
+    }
+
+    public List<Level> getCustomChallengeLevels() {
+        ensureLevelsLoaded();
+        return levelManager.getCustomChallengeLevels();
+    }
+
+    public Optional<MedalContract> getMedalContract(Level level) {
+        return level == null ? Optional.empty() : Optional.ofNullable(level.getMedalContract());
+    }
+
+    public MedalContractProgress getMedalContractProgress(Level level) {
+        MedalContract contract = level == null ? null : level.getMedalContract();
+        if (contract == null || gameState == null || gameState.getCurrentLevel() == null) {
+            return new MedalContractProgress(true, true, "No contract.");
+        }
+
+        return switch (contract.type()) {
+            case NO_HINTS -> {
+                int countedHints = gameState.countedHintCountForCurrentLevel();
+                yield countedHints == 0
+                        ? new MedalContractProgress(true, true, "Contract live: no tracked hints used.")
+                        : new MedalContractProgress(false, false, "Contract failed: " + countedHints + " tracked hint" + (countedHints == 1 ? "" : "s") + " used.");
+            }
+            case NO_HELPER -> {
+                boolean helperOpened = level.getRoom().hasHiddenHelper() && level.getRoom().isHelperFound();
+                yield helperOpened
+                        ? new MedalContractProgress(false, false, "Contract failed: helper cache opened.")
+                        : new MedalContractProgress(true, true, "Contract live: helper cache still sealed.");
+            }
+            case SOLVE_QUESTION_DOOR -> {
+                boolean solved = level.getRoom().getChallengeQuestion() != null && level.getRoom().getChallengeQuestion().isSolved();
+                yield solved
+                        ? new MedalContractProgress(true, true, "Contract complete: question door solved.")
+                        : new MedalContractProgress(false, true, "Contract pending: solve the question door before leaving.");
+            }
+        };
+    }
+
+    public boolean medalContractSatisfied(Level level) {
+        MedalContract contract = level == null ? null : level.getMedalContract();
+        if (contract == null) {
+            return true;
+        }
+
+        return switch (contract.type()) {
+            case NO_HINTS -> gameState != null && gameState.countedHintCountForCurrentLevel() == 0;
+            case NO_HELPER -> level.getRoom() == null || !level.getRoom().hasHiddenHelper() || !level.getRoom().isHelperFound();
+            case SOLVE_QUESTION_DOOR -> level.getRoom() != null
+                    && level.getRoom().getChallengeQuestion() != null
+                    && level.getRoom().getChallengeQuestion().isSolved();
+        };
+    }
+
+    public boolean canUseScoutHint(Level level) {
+        StageMilestoneReward reward = stageClearRewardFor(level);
+        return reward != null
+                && playerProfile.hasStageReward(reward)
+                && gameState != null
+                && gameState.getCurrentLevel() != null
+                && gameState.getCurrentLevel().getLevelNumber() == level.getLevelNumber()
+                && gameState.canRevealScoutHintForCurrentLevel();
+    }
+
+    public boolean canPromoteContractGold(Level level) {
+        return stageGoldRewardFor(level) != null && playerProfile.hasStageReward(stageGoldRewardFor(level));
+    }
+
+    public boolean canUseBossSealDrill(Level level) {
+        return bossSealRewardFor(level) != null && playerProfile.hasStageReward(bossSealRewardFor(level));
+    }
+
+    public Optional<String> revealScoutHint(Level level) {
+        if (!canUseScoutHint(level) || gameState == null) {
+            return Optional.empty();
+        }
+        return gameState.revealScoutHint();
     }
 
     public void recordHintUsageForLevel(Level level) {
@@ -582,6 +665,8 @@ public class GameApp extends Application {
         List<StageMilestoneReward> newStageRewards = new java.util.ArrayList<>();
 
         MedalRank medalRank = determineMedal(completedLevel);
+        MedalContract completedContract = completedLevel.getMedalContract();
+        boolean contractCompleted = medalContractSatisfied(completedLevel);
         updatedProfile = updatedProfile.withLevelMedal(completedLevel.getLevelNumber(), medalRank);
 
         if (!gameState.hadMistakeOnCurrentLevel() && !updatedProfile.hasAchievement(AchievementId.CLEAN_CODER)) {
@@ -639,14 +724,24 @@ public class GameApp extends Application {
 
         playerProfile = updatedProfile;
         saveService.saveProfile(playerProfile);
-        lastCompletionSummary = new LevelCompletionSummary(medalRank, newAchievements, newNotebookEntries, newRecoveryStamps, newStageRewards);
+        lastCompletionSummary = new LevelCompletionSummary(
+                medalRank,
+                completedContract,
+                contractCompleted,
+                newAchievements,
+                newNotebookEntries,
+                newRecoveryStamps,
+                newStageRewards
+        );
     }
 
     private MedalRank determineMedal(Level completedLevel) {
-        if (gameState.getGameMode().isHard() && !gameState.hadMistakeOnCurrentLevel()) {
+        boolean clean = !gameState.hadMistakeOnCurrentLevel();
+        boolean contractSatisfied = medalContractSatisfied(completedLevel);
+        if (clean && contractSatisfied && (gameState.getGameMode().isHard() || canPromoteContractGold(completedLevel))) {
             return MedalRank.GOLD;
         }
-        if (!gameState.hadMistakeOnCurrentLevel()) {
+        if (clean) {
             return MedalRank.SILVER;
         }
         return MedalRank.BRONZE;
@@ -874,6 +969,48 @@ public class GameApp extends Application {
             case 3 -> StageMilestoneReward.STAGE_3_GOLD;
             case 4 -> StageMilestoneReward.STAGE_4_GOLD;
             case 5 -> StageMilestoneReward.STAGE_5_GOLD;
+            default -> null;
+        };
+    }
+
+    private StageMilestoneReward stageClearRewardFor(Level level) {
+        if (level == null) {
+            return null;
+        }
+        return switch (level.getStageNumber()) {
+            case 1 -> StageMilestoneReward.STAGE_1_CLEAR;
+            case 2 -> StageMilestoneReward.STAGE_2_CLEAR;
+            case 3 -> StageMilestoneReward.STAGE_3_CLEAR;
+            case 4 -> StageMilestoneReward.STAGE_4_CLEAR;
+            case 5 -> StageMilestoneReward.STAGE_5_CLEAR;
+            default -> null;
+        };
+    }
+
+    private StageMilestoneReward stageGoldRewardFor(Level level) {
+        if (level == null) {
+            return null;
+        }
+        return switch (level.getStageNumber()) {
+            case 1 -> StageMilestoneReward.STAGE_1_GOLD;
+            case 2 -> StageMilestoneReward.STAGE_2_GOLD;
+            case 3 -> StageMilestoneReward.STAGE_3_GOLD;
+            case 4 -> StageMilestoneReward.STAGE_4_GOLD;
+            case 5 -> StageMilestoneReward.STAGE_5_GOLD;
+            default -> null;
+        };
+    }
+
+    private StageMilestoneReward bossSealRewardFor(Level level) {
+        if (level == null) {
+            return null;
+        }
+        return switch (level.getStageNumber()) {
+            case 1 -> StageMilestoneReward.STAGE_1_BOSS;
+            case 2 -> StageMilestoneReward.STAGE_2_BOSS;
+            case 3 -> StageMilestoneReward.STAGE_3_BOSS;
+            case 4 -> StageMilestoneReward.STAGE_4_BOSS;
+            case 5 -> StageMilestoneReward.STAGE_5_BOSS;
             default -> null;
         };
     }

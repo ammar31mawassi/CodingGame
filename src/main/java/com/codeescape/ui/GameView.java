@@ -5,6 +5,8 @@ import com.codeescape.engine.AchievementId;
 import com.codeescape.engine.CollisionManager;
 import com.codeescape.engine.GameState;
 import com.codeescape.engine.HintLibrary;
+import com.codeescape.engine.MedalContract;
+import com.codeescape.engine.MedalContractProgress;
 import com.codeescape.engine.MedalRank;
 import com.codeescape.engine.NotebookEntry;
 import com.codeescape.engine.RoomLayoutBuilder;
@@ -32,6 +34,7 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
 import javafx.scene.control.Label;
 import javafx.scene.control.OverrunStyle;
 import javafx.scene.image.Image;
@@ -63,10 +66,10 @@ public class GameView {
     private static final double TERMINAL_MARGIN_BOTTOM = 26;
     private static final double INVENTORY_WIDTH = 224;
     private static final double INVENTORY_HEIGHT = 54;
-    private static final double INVENTORY_MARGIN_BOTTOM = 6;
+    private static final double HUD_DOCK_LEFT = RoomLayoutBuilder.GRID_ORIGIN_X;
+    private static final double HUD_DOCK_BOTTOM = 26;
+    private static final double GOAL_BUTTON_WIDTH = 138;
     private static final double BOTTOM_CONTROL_MARGIN = 86;
-    private static final double GOAL_MARGIN_LEFT = 42;
-    private static final double GOAL_MARGIN_BOTTOM = 8;
     private static final double HARD_MODE_LIGHT_RADIUS = 123.75;
     private static final double BUG_HUD_HEIGHT = 46;
     private static final double GAME_SURFACE_TOP_PADDING = 12;
@@ -134,7 +137,6 @@ public class GameView {
         bugHud = createBugHud();
         renderRoom();
 
-        Button goalButton = createGoalButton();
         adviceToastLayer = createAdviceToastLayer();
         VBox playfield = new VBox(GAME_SURFACE_HUD_GAP, bugHud, gamePane);
         playfield.setPadding(new Insets(GAME_SURFACE_TOP_PADDING, 0, 0, 0));
@@ -148,12 +150,10 @@ public class GameView {
         gameSurface.setPrefSize(GAME_SURFACE_WIDTH, GAME_SURFACE_HEIGHT);
         gameSurface.setMaxSize(GAME_SURFACE_WIDTH, GAME_SURFACE_HEIGHT);
 
-        root = new StackPane(gameSurface, goalButton, adviceToastLayer);
+        root = new StackPane(gameSurface, adviceToastLayer);
         root.getStyleClass().add("game-screen");
         root.setPadding(new Insets(0));
         root.setFocusTraversable(true);
-        StackPane.setAlignment(goalButton, Pos.BOTTOM_LEFT);
-        StackPane.setMargin(goalButton, new Insets(0, 0, GOAL_MARGIN_BOTTOM, GOAL_MARGIN_LEFT));
         StackPane.setAlignment(adviceToastLayer, Pos.TOP_RIGHT);
         StackPane.setMargin(adviceToastLayer, new Insets(22, 22, 0, 0));
 
@@ -199,6 +199,7 @@ public class GameView {
         addTokens();
         addPlayer();
         addHardModeDarkness();
+        addGoalButton();
         addInventoryButton();
         addPickupMessage();
         refreshBugHud();
@@ -579,6 +580,22 @@ public class GameView {
         goalLabel.setMinHeight(Region.USE_PREF_SIZE);
 
         VBox content = new VBox(14, title, goalLabel);
+        app.getMedalContract(level).ifPresent(contract -> {
+            Label contractTitle = new Label("Medal Contract: " + contract.title());
+            contractTitle.getStyleClass().add("modal-section-title");
+            Label contractCopy = new Label(contract.description());
+            contractCopy.getStyleClass().add("modal-copy");
+            contractCopy.setWrapText(true);
+            contractCopy.setPrefWidth(640);
+            contractCopy.setMaxWidth(640);
+            MedalContractProgress progress = app.getMedalContractProgress(level);
+            Label contractStatus = new Label(progress.status());
+            contractStatus.getStyleClass().add(progress.stillPossible() ? "achievement-unlocked-copy" : "modal-copy");
+            contractStatus.setWrapText(true);
+            contractStatus.setPrefWidth(640);
+            contractStatus.setMaxWidth(640);
+            content.getChildren().addAll(contractTitle, contractCopy, contractStatus);
+        });
         if (goalFound) {
             Label doorLabel = new Label(room.getDoor().isLocked() ? "Door: locked" : "Door: open");
             doorLabel.getStyleClass().add("modal-copy");
@@ -601,13 +618,54 @@ public class GameView {
             }
 
             if (revealedHints < hints.size()) {
+                HBox hintButtons = new HBox(10);
+                hintButtons.setAlignment(Pos.CENTER_LEFT);
+
                 Button hintButton = new Button("Reveal Hint " + (revealedHints + 1));
                 hintButton.getStyleClass().add("pixel-button");
                 hintButton.setOnAction(event -> {
                     SoundManager.play(SoundEffect.BUTTON);
                     revealNextHintAndRefreshGoal();
                 });
-                content.getChildren().add(hintButton);
+                hintButtons.getChildren().add(hintButton);
+
+                if (app.canUseScoutHint(level)) {
+                    Button scoutButton = new Button("Scout Hint");
+                    scoutButton.getStyleClass().add("pixel-button");
+                    scoutButton.setOnAction(event -> {
+                        SoundManager.play(SoundEffect.BUTTON);
+                        app.revealScoutHint(level).ifPresent(hint -> {
+                            SoundManager.play(SoundEffect.HINT);
+                            showAdviceToast("Scout Hint", hint);
+                        });
+                        closeModal();
+                        showGoalWindow();
+                    });
+                    hintButtons.getChildren().add(scoutButton);
+                }
+
+                content.getChildren().add(hintButtons);
+            }
+
+            if (app.canUseBossSealDrill(level)) {
+                app.getPracticePromptForLevel(level).ifPresent(prompt -> {
+                    Button remixButton = new Button("Boss Seal Drill");
+                    remixButton.getStyleClass().add("pixel-button");
+                    remixButton.setOnAction(event -> {
+                        SoundManager.play(SoundEffect.BUTTON);
+                        showPracticeModal(prompt, "Boss Seal Drill");
+                    });
+                    content.getChildren().add(remixButton);
+                });
+            }
+
+            if (app.canPromoteContractGold(level) && !gameState.getGameMode().isHard()) {
+                Label perkLabel = new Label("Gold Sigil perk: a clean clear plus contract success still upgrades this run to Gold.");
+                perkLabel.getStyleClass().add("achievement-unlocked-copy");
+                perkLabel.setWrapText(true);
+                perkLabel.setPrefWidth(640);
+                perkLabel.setMaxWidth(640);
+                content.getChildren().add(perkLabel);
             }
         }
         content.setMaxWidth(640);
@@ -642,8 +700,8 @@ public class GameView {
         Label movement = tutorialLine("Move with W, A, S, D or the arrow keys.");
         Label tokens = tutorialLine("Walk into tokens and chests to collect code pieces.");
         Label terminal = tutorialLine("Open the terminal by pressing Enter or clicking the green terminal.");
-        Label goal = tutorialLine("Find the Goal, open it from the bottom-left button, then solve the terminal puzzle to unlock the door.");
-        Label inventory = tutorialLine("Use the bottom inventory button to inspect collected tokens.");
+        Label goal = tutorialLine("Find the Goal, open it from the bottom control bar, then solve the terminal puzzle to unlock the door.");
+        Label inventory = tutorialLine("Use Inventory in the bottom control bar to inspect collected tokens.");
 
         Button startButton = new Button("Start");
         startButton.getStyleClass().add("pixel-button");
@@ -703,6 +761,7 @@ public class GameView {
 
     private void revealNextHintAndRefreshGoal() {
         gameState.revealNextHint().ifPresent(hint -> {
+            app.recordHintUsageForLevel(gameState.getCurrentLevel());
             SoundManager.play(SoundEffect.HINT);
             showAdviceToast(
                     "Hint " + gameState.revealedHintCountForCurrentLevel(),
@@ -839,28 +898,6 @@ public class GameView {
         innerFloor.getStyleClass().add("room-inner-floor");
 
         gamePane.getChildren().addAll(floor, innerFloor);
-        addFloorGrid();
-    }
-
-    private void addFloorGrid() {
-        double left = gridLeft();
-        double top = gridTop();
-        double right = gridRight();
-        double bottom = gridBottom();
-        for (int column = 1; column < RoomLayoutBuilder.GRID_COLUMNS; column++) {
-            Rectangle line = new Rectangle(2, bottom - top);
-            line.setLayoutX(left + column * RoomLayoutBuilder.GRID_CELL_WIDTH - 1);
-            line.setLayoutY(top);
-            line.getStyleClass().add("room-grid-line");
-            gamePane.getChildren().add(line);
-        }
-        for (int row = 1; row < RoomLayoutBuilder.GRID_ROWS; row++) {
-            Rectangle line = new Rectangle(right - left, 2);
-            line.setLayoutX(left);
-            line.setLayoutY(top + row * RoomLayoutBuilder.GRID_CELL_HEIGHT - 1);
-            line.getStyleClass().add("room-grid-line");
-            gamePane.getChildren().add(line);
-        }
     }
 
     private Rectangle createInnerFloor() {
@@ -1234,13 +1271,26 @@ public class GameView {
 
     private Button createGoalButton() {
         Button button = new Button();
+        button.setText("Goal");
         button.setGraphic(createGoalIcon());
+        button.setContentDisplay(ContentDisplay.LEFT);
+        button.setGraphicTextGap(8);
+        button.setPrefSize(GOAL_BUTTON_WIDTH, INVENTORY_HEIGHT);
+        button.setMinSize(GOAL_BUTTON_WIDTH, INVENTORY_HEIGHT);
+        button.setMaxSize(GOAL_BUTTON_WIDTH, INVENTORY_HEIGHT);
         button.getStyleClass().add("goal-icon-button");
         button.setOnAction(event -> {
             SoundManager.play(SoundEffect.BUTTON);
             showGoalWindow();
         });
         return button;
+    }
+
+    private void addGoalButton() {
+        Button button = createGoalButton();
+        button.setLayoutX(HUD_DOCK_LEFT);
+        button.setLayoutY(Constants.ROOM_HEIGHT - INVENTORY_HEIGHT - HUD_DOCK_BOTTOM);
+        gamePane.getChildren().add(button);
     }
 
     private VBox createAdviceToastLayer() {
@@ -1252,8 +1302,8 @@ public class GameView {
     }
 
     private void addInventoryButton() {
-        double x = Constants.ROOM_WIDTH / 2.0 - INVENTORY_WIDTH / 2.0;
-        double y = Constants.ROOM_HEIGHT - INVENTORY_HEIGHT - INVENTORY_MARGIN_BOTTOM;
+        double x = (Constants.ROOM_WIDTH - INVENTORY_WIDTH) / 2.0;
+        double y = Constants.ROOM_HEIGHT - INVENTORY_HEIGHT - HUD_DOCK_BOTTOM;
 
         Rectangle shadow = new Rectangle(INVENTORY_WIDTH, 6);
         shadow.setLayoutX(x);
